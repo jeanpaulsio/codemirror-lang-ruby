@@ -2,7 +2,7 @@ import {parser} from "./syntax.grammar"
 import {
   LRLanguage, LanguageSupport,
   indentNodeProp, foldNodeProp, foldInside,
-  delimitedIndent, TreeIndentContext
+  delimitedIndent, indentService
 } from "@codemirror/language"
 import {completeFromList} from "@codemirror/autocomplete"
 import {rubyHighlighting} from "./highlight"
@@ -41,25 +41,70 @@ const rubyCompletion = completeFromList([
   {label: "next", type: "keyword"},
 ])
 
-// Deindent keywords — when these appear on the current line, deindent to
-// match the opening keyword (def, class, if, etc.)
-const DEINDENT = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/
+// Keywords that open a new indentation level
+const INDENT_AFTER = /^\s*(def|class|module|if|unless|while|until|for|case|begin|do)\b/
+// Also indent after lines ending with block openers
+const INDENT_END = /(\bdo\s*(\|[^|]*\|)?\s*$|\{(\s*\|[^|]*\|)?\s*$)/
 
-// Ruby indentation: indent after block-opening keywords, deindent on
-// closing/intermediate keywords. The indent function checks textAfter
-// (what the user is typing on the current line) to deindent immediately
-// when typing `end`, `else`, `elsif`, etc.
-function rubyIndent(context: TreeIndentContext) {
-  const closing = DEINDENT.test(context.textAfter)
-  return context.baseIndent + (closing ? 0 : context.unit)
-}
+// Keywords that should deindent (align with opening keyword)
+const DEINDENT_BEFORE = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/
 
-// For intermediate keywords (elsif, else, rescue, ensure, when, in) —
-// these are at the same level as the opening keyword, but content inside
-// them indents one level.
-function rubyIntermediateIndent(context: TreeIndentContext) {
-  const closing = DEINDENT.test(context.textAfter)
-  return context.baseIndent + (closing ? 0 : context.unit)
+// Text-based indentation service. This runs BEFORE tree-based indentation
+// and handles the common case of incomplete code (no `end` yet).
+// It looks at the previous line to decide whether to indent/deindent.
+function rubyIndentService(context: {
+  state: {doc: {lineAt(pos: number): {text: string, from: number, number: number}}},
+  lineAt(pos: number, bias?: number): {text: string, from: number},
+  lineIndent(pos: number, bias?: number): number,
+  unit: number,
+}, pos: number): number | undefined {
+  const line = context.state.doc.lineAt(pos)
+  const lineText = line.text
+
+  // If the current line has a deindent keyword, find the matching indent
+  if (DEINDENT_BEFORE.test(lineText)) {
+    // Look backwards for the matching opening keyword
+    if (line.number > 1) {
+      const prevLine = context.state.doc.lineAt(line.from - 1)
+      const prevIndent = context.lineIndent(prevLine.from)
+      const prevText = prevLine.text
+
+      // If previous line was an indent keyword, stay at its level
+      if (INDENT_AFTER.test(prevText)) {
+        return prevIndent
+      }
+      // Otherwise deindent one level from the previous line
+      return Math.max(0, prevIndent - context.unit)
+    }
+    return 0
+  }
+
+  // For new lines: check if the previous line should cause indentation
+  if (line.number > 1) {
+    const prevLine = context.state.doc.lineAt(line.from - 1)
+    const prevText = prevLine.text
+    const prevIndent = context.lineIndent(prevLine.from)
+
+    // Previous line is a block-opening keyword → indent
+    if (INDENT_AFTER.test(prevText) || INDENT_END.test(prevText)) {
+      return prevIndent + context.unit
+    }
+
+    // Previous line is `end` → stay at end's level (not indented)
+    if (/^\s*end\b/.test(prevText)) {
+      return prevIndent
+    }
+
+    // Previous line is an intermediate keyword → indent body
+    if (/^\s*(else|elsif|when|in|rescue|ensure)\b/.test(prevText)) {
+      return prevIndent + context.unit
+    }
+
+    // Default: maintain previous line's indentation
+    return prevIndent
+  }
+
+  return 0
 }
 
 export const rubyLanguage = LRLanguage.define({
@@ -68,11 +113,6 @@ export const rubyLanguage = LRLanguage.define({
     props: [
       rubyHighlighting,
       indentNodeProp.add({
-        "ClassBody ModuleBody MethodBody": rubyIndent,
-        "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement": rubyIndent,
-        BeginBlock: rubyIndent,
-        DoBlock: rubyIndent,
-        "ElsifClause ElseClause WhenClause InClause RescueClause EnsureClause": rubyIntermediateIndent,
         Block: delimitedIndent({closing: "}"}),
         Array: delimitedIndent({closing: "]"}),
         Hash: delimitedIndent({closing: "}"}),
@@ -99,5 +139,7 @@ export const rubyLanguage = LRLanguage.define({
 })
 
 export function ruby() {
-  return new LanguageSupport(rubyLanguage)
+  return new LanguageSupport(rubyLanguage, [
+    indentService.of(rubyIndentService),
+  ])
 }
