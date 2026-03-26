@@ -183,6 +183,7 @@ expression {
   CharacterLiteral |
   PercentStringLiteral |
   Regex |
+  Heredoc |
   Symbol |
   Array |
   Hash |
@@ -233,6 +234,8 @@ BinaryExpression {
   expression !mul "*" expression |
   expression !exp "**" expression |
   expression !compare CompareOp expression |
+  expression !compare lessThanOp expression |
+  expression !compare lessThanEqOp expression |
   expression !logic LogicOp expression |
   expression !logic kw<"and"> expression |
   expression !logic kw<"or"> expression
@@ -294,6 +297,11 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
   StringEscape { "\\" _ }
   @else StringContent
 }
+
+// Heredocs are matched as a single opaque token by the external tokenizer.
+// The tokenizer reads <<[-~]?DELIM, scans to the closing DELIM line, and
+// emits the entire heredoc as one Heredoc token. Interpolation inside
+// heredocs is not yet supported (would need @local tokens + ContextTracker).
 
 Array { "[" commaSep<expression> "]" }
 Hash { "{" (HashPair ("," HashPair)*)? "}" }
@@ -357,7 +365,9 @@ semi { ";" | newline }
   // "/" is NOT in ArithOp — it's handled by the external tokenizer which
   // emits either Regex or divideOp depending on context.
   ArithOp { "+" | "%" }
-  CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
+  // "<" and "<=" are NOT in CompareOp — they're handled by the external
+  // tokenizer which also emits heredocStart for <<DELIM.
+  CompareOp { "==" | "!=" | ">" | ">=" | "<=>" | "===" }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
 
@@ -393,8 +403,12 @@ semi { ";" | newline }
 }
 
 // External tokenizers for context-dependent tokens
-// External tokenizer: handles / as either Regex or division (ArithOp)
-// based on parser state. Regex wins by longest-match when both are valid.
+// External tokenizers for context-dependent tokens
 @external tokens regexTokenizer from "./tokens" { Regex, divideOp[@name=ArithOp] }
+@external tokens lessThanTokenizer from "./tokens" {
+  Heredoc,
+  lessThanOp[@name=CompareOp],
+  lessThanEqOp[@name=CompareOp]
+}
 
 @detectDelim
