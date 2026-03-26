@@ -84,7 +84,7 @@ Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(Inte
 
 ==>
 
-Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, BinaryExpression(BinaryExpression(Identifier, ArithOp, Identifier), ArithOp, Identifier), InterpolationEnd))))
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, BinaryExpression(Identifier, ArithOp, BinaryExpression(Identifier, Identifier)), InterpolationEnd))))
 
 # Single-quoted string has no interpolation
 

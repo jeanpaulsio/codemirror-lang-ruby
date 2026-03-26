@@ -23,13 +23,18 @@
     "test:watch": "mocha test/test.js --watch",
     "lint": "tsc --noEmit"
   },
-  "dependencies": {
+  "dependencies": {},
+  "peerDependencies": {
     "@codemirror/language": "^6.0.0",
     "@lezer/common": "^1.0.0",
     "@lezer/highlight": "^1.0.0",
     "@lezer/lr": "^1.0.0"
   },
   "devDependencies": {
+    "@codemirror/language": "^6.0.0",
+    "@lezer/common": "^1.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "@lezer/lr": "^1.0.0",
     "@lezer/generator": "^1.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
     "@rollup/plugin-typescript": "^11.0.0",
