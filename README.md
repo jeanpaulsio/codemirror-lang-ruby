@@ -50,13 +50,11 @@ Tested against popular open source Ruby projects:
 - **Bare method calls**: `puts "hello"`, `require "json"`, `attr_reader :name`, `include Comparable` (25 common Ruby methods)
 - **Variables**: local, `@instance`, `@@class`, `$global`, `Constants`
 - **Comments**: line `#` and block `=begin`/`=end`
-- **Editor features**: indentation, code folding, bracket closing, keyword autocompletion (31 keywords)
+- **Editor features**: smart indentation (119 test cases), code folding, bracket closing, keyword autocompletion (31 keywords)
 
 ## Known limitations
 
 - Heredoc and `%`-literal bodies are opaque tokens (no interpolation highlighting inside)
-- Hash symbol-key shorthand (`{ name: "Alice" }`) not supported (`:` conflicts with Symbol token when blocks are expressions)
-- Setter method definitions (`def name=(val)`) and subscript access (`arr[0]`) not yet supported
 - `<<` left-shift operator not distinguished from heredoc start
 
 ## Development
@@ -64,7 +62,7 @@ Tested against popular open source Ruby projects:
 ```bash
 npm install          # Install dependencies
 npm run build        # Build grammar + bundle to dist/
-npm test             # Run all 83 grammar tests
+npm test             # Run all 89 grammar tests
 npm run lint         # TypeScript type check
 npm run demo:build   # Build the demo page
 ```
