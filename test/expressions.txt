@@ -14,13 +14,13 @@ Program(Assignment(Identifier, AssignOp, Integer))
 
 Program(Assignment(InstanceVariable, AssignOp, InterpolatedString(StringContent)))
 
-# Method call
+# Method call with parens
 
 puts("hello")
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(InterpolatedString(StringContent))))))
+Program(BareMethodCall(puts, ParenExpression(InterpolatedString(StringContent))))
 
 # Chained method call
 
@@ -118,7 +118,7 @@ puts(x) if condition
 
 ==>
 
-Program(ExpressionStatement(ConditionalModifier(MethodCall(Identifier, ArgList(Arg(Identifier))), if, Identifier)))
+Program(BareMethodCall(puts, ConditionalModifier(ParenExpression(Identifier), if, Identifier)))
 
 # Safe navigation operator
 
@@ -159,3 +159,43 @@ x ** 2
 ==>
 
 Program(ExpressionStatement(BinaryExpression(Identifier, Integer)))
+
+# Bare method call without parens
+
+puts "hello"
+
+==>
+
+Program(BareMethodCall(puts, InterpolatedString(StringContent)))
+
+# Require
+
+require "json"
+
+==>
+
+Program(BareMethodCall(require, InterpolatedString(StringContent)))
+
+# Attr reader with symbols
+
+attr_reader :name, :email
+
+==>
+
+Program(BareMethodCall(attr_reader, Symbol, Symbol))
+
+# Scope resolution
+
+Foo::Bar
+
+==>
+
+Program(ExpressionStatement(ScopeResolution(Constant, Constant)))
+
+# Chained scope resolution
+
+Foo::Bar::Baz
+
+==>
+
+Program(ExpressionStatement(ScopeResolution(ScopeResolution(Constant, Constant), Constant)))
