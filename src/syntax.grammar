@@ -182,6 +182,7 @@ expression {
   InterpolatedString |
   CharacterLiteral |
   PercentStringLiteral |
+  Regex |
   Symbol |
   Array |
   Hash |
@@ -228,6 +229,7 @@ Arg {
 BinaryExpression {
   expression !add ArithOp expression |
   expression !add "-" expression |
+  expression !mul divideOp expression |
   expression !mul "*" expression |
   expression !exp "**" expression |
   expression !compare CompareOp expression |
@@ -352,10 +354,9 @@ semi { ";" | newline }
     "%" $[wWiIqQrsx]? "{" (![\\}] | "\\" _)* "}" |
     "%" $[wWiIqQrsx]? "<" (![\\>] | "\\" _)* ">"
   }
-  // Regex token removed — it conflicts with division (/). Regex support
-  // requires an external tokenizer (Phase 4) that checks preceding context.
-
-  ArithOp { "+" | "/" | "%" }
+  // "/" is NOT in ArithOp — it's handled by the external tokenizer which
+  // emits either Regex or divideOp depending on context.
+  ArithOp { "+" | "%" }
   CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
@@ -390,5 +391,10 @@ semi { ";" | newline }
     "&"
   }
 }
+
+// External tokenizers for context-dependent tokens
+// External tokenizer: handles / as either Regex or division (ArithOp)
+// based on parser state. Regex wins by longest-match when both are valid.
+@external tokens regexTokenizer from "./tokens" { Regex, divideOp[@name=ArithOp] }
 
 @detectDelim

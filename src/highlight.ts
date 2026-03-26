@@ -29,6 +29,7 @@ export const rubyHighlighting = styleTags({
   StringEscape: t.escape,
   InterpolationStart: t.special(t.brace),
   InterpolationEnd: t.special(t.brace),
+  Regex: t.regexp,
   LineComment: t.lineComment,
   BlockComment: t.blockComment,
   "( )": t.paren,

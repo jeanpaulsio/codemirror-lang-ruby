@@ -133,3 +133,35 @@ Program(ExpressionStatement(PercentStringLiteral))
 ==>
 
 Program(ExpressionStatement(PercentStringLiteral))
+
+# Regex literal
+
+/pattern/i
+
+==>
+
+Program(ExpressionStatement(Regex))
+
+# Regex after assignment
+
+x = /hello\sworld/m
+
+==>
+
+Program(Assignment(Identifier, AssignOp, Regex))
+
+# Division not regex
+
+10 / 2
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Integer, ArithOp, Integer)))
+
+# Regex after operator
+
+x + /test/
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, ArithOp, Regex)))
