@@ -12,7 +12,7 @@ Program(Assignment(Identifier, AssignOp, Integer))
 
 ==>
 
-Program(Assignment(InstanceVariable, AssignOp, String))
+Program(Assignment(InstanceVariable, AssignOp, InterpolatedString(StringContent)))
 
 # Method call
 
@@ -20,7 +20,7 @@ puts("hello")
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, ArgList(String))))
+Program(ExpressionStatement(MethodCall(Identifier, ArgList(InterpolatedString(StringContent)))))
 
 # Chained method call
 

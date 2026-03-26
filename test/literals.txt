@@ -20,7 +20,7 @@ Program(ExpressionStatement(Float))
 
 ==>
 
-Program(ExpressionStatement(String))
+Program(ExpressionStatement(SingleQuotedString))
 
 # String (double quotes)
 
@@ -28,7 +28,7 @@ Program(ExpressionStatement(String))
 
 ==>
 
-Program(ExpressionStatement(String))
+Program(ExpressionStatement(InterpolatedString(StringContent)))
 
 # Symbol
 
@@ -76,7 +76,7 @@ Program(ExpressionStatement(Array(Integer, Integer, Integer)))
 
 ==>
 
-Program(ExpressionStatement(Hash(HashPair(String, Integer), HashPair(String, Integer))))
+Program(ExpressionStatement(Hash(HashPair(InterpolatedString(StringContent), Integer), HashPair(InterpolatedString(StringContent), Integer))))
 
 # Empty hash
 
