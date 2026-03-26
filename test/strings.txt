@@ -54,6 +54,38 @@ Program(ExpressionStatement(InterpolatedString(StringContent, StringEscape, Stri
 
 Program(ExpressionStatement(InterpolatedString(StringContent, StringEscape, StringContent)))
 
+# Pure interpolation (no surrounding text)
+
+"#{x}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Adjacent interpolations
+
+"#{a}#{b}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(Interpolation(InterpolationStart, Identifier, InterpolationEnd), Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Nested string inside interpolation
+
+"hello #{"world"}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, InterpolatedString(StringContent), InterpolationEnd))))
+
+# Operator precedence inside interpolation
+
+"result #{a + b * c}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, BinaryExpression(BinaryExpression(Identifier, ArithOp, Identifier), ArithOp, Identifier), InterpolationEnd))))
+
 # Single-quoted string has no interpolation
 
 'hello #{not interpolated}'
