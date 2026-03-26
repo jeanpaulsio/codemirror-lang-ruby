@@ -1,6 +1,7 @@
 import {EditorView, basicSetup} from "codemirror"
 import {keymap} from "@codemirror/view"
 import {indentWithTab} from "@codemirror/commands"
+import {getIndentation} from "@codemirror/language"
 import {oneDark} from "@codemirror/theme-one-dark"
 import {ruby} from "../src/index"
 
@@ -79,7 +80,9 @@ new EditorView({
       indentWithTab,
       {key: "Mod-Shift-Enter", run: (view) => {
         const line = view.state.doc.lineAt(view.state.selection.main.head)
-        view.dispatch({changes: {from: line.from, insert: "\n"}, selection: {anchor: line.from}})
+        const indent = getIndentation(view.state, line.from)
+        const pad = indent != null && indent > 0 ? " ".repeat(indent) : ""
+        view.dispatch({changes: {from: line.from, insert: pad + "\n"}, selection: {anchor: line.from + pad.length}})
         return true
       }},
     ]),
