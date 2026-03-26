@@ -292,7 +292,7 @@ Range {
 }
 
 TernaryExpression {
-  expression !ternary "?" expression ":" expression
+  expression !ternary "?" expression colonOp expression
 }
 
 ConditionalModifier {
@@ -329,9 +329,7 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
 
 Array { "[" commaSep<expression> "]" }
 Hash { ~blockOrHash "{" (HashPair ("," HashPair)*)? "}" ~blockOrHash }
-// Symbol-key shorthand (key: value) removed — ":" conflicts with Symbol
-// token when Block is also an expression alternative. Use rocket => syntax.
-HashPair { expression "=>" expression }
+HashPair { expression "=>" expression | Identifier colonOp expression }
 
 @precedence {
   member @left,
@@ -377,7 +375,8 @@ semi { ";" | newline }
     "'" (![\\'] | "\\" _)* "'"
   }
 
-  Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  // Symbol is now handled by external tokenizer to avoid overlap with ":"
+  // in hash shorthand context. See symbolTokenizer in tokens.ts.
   CharacterLiteral { "?" ("\\" _ | ![$ \t\n\r]) }
 
   // %-literals are now handled by the external tokenizer to support
@@ -393,7 +392,9 @@ semi { ";" | newline }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
 
-  "(" ")" "[" "]" "{" "}" "." "&." "::" "," ";" ":" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
+  // ":" is NOT in punctuation — handled by symbolTokenizer which emits
+  // either Symbol (:foo) or colonOp (for ternary : and hash shorthand key:)
+  "(" ")" "[" "]" "{" "}" "." "&." "::" "," ";" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
 
   @precedence {
     BlockComment,
@@ -405,7 +406,6 @@ semi { ";" | newline }
     GlobalVariable,
     Constant,
     Identifier,
-    Symbol,
     CharacterLiteral,
     CompareOp,
     "::",
@@ -427,6 +427,7 @@ semi { ";" | newline }
 // External tokenizers for context-dependent tokens
 @external tokens regexTokenizer from "./tokens" { Regex, divideOp[@name=ArithOp] }
 @external tokens percentLiteralTokenizer from "./tokens" { PercentStringLiteral, moduloOp[@name=ArithOp] }
+@external tokens symbolTokenizer from "./tokens" { Symbol, colonOp }
 @external tokens lessThanTokenizer from "./tokens" {
   Heredoc,
   lessThanOp[@name=CompareOp],

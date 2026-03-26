@@ -3,6 +3,7 @@ import {
   Regex, divideOp,
   Heredoc, lessThanOp, lessThanEqOp, inheritsOp,
   PercentStringLiteral, moduloOp,
+  Symbol as SymbolToken, colonOp,
 } from "./syntax.grammar.terms"
 
 // ============================================================
@@ -269,6 +270,34 @@ function tryMatchPercentLiteral(input: {peek(offset: number): number}): number {
 
   return pos
 }
+
+// ============================================================
+// Symbol external tokenizer
+//
+// :identifier — moved from inline tokens to avoid overlap with
+// ":" literal used in hash shorthand (key: value).
+// Only matches when followed by a letter/underscore (not whitespace).
+// ============================================================
+
+export const symbolTokenizer = new ExternalTokenizer((input, stack) => {
+  if (input.next !== 58 /* ':' */) return
+
+  // :identifier → Symbol (if parser expects it)
+  const next = input.peek(1)
+  if (isIdentStart(next)) {
+    let pos = 2
+    while (isIdentChar(input.peek(pos))) pos++
+    if (stack.canShift(SymbolToken)) {
+      input.acceptToken(SymbolToken, pos)
+      return
+    }
+  }
+
+  // Fall back to plain colon (ternary, hash shorthand)
+  if (stack.canShift(colonOp)) {
+    input.acceptToken(colonOp, 1)
+  }
+})
 
 function isIdentStart(ch: number): boolean {
   return (ch >= 65 && ch <= 90) || (ch >= 97 && ch <= 122) || ch === 95

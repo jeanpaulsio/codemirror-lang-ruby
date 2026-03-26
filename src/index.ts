@@ -2,7 +2,7 @@ import {parser} from "./syntax.grammar"
 import {
   LRLanguage, LanguageSupport,
   indentNodeProp, foldNodeProp, foldInside,
-  delimitedIndent
+  delimitedIndent, TreeIndentContext
 } from "@codemirror/language"
 import {completeFromList} from "@codemirror/autocomplete"
 import {rubyHighlighting} from "./highlight"
@@ -41,41 +41,43 @@ const rubyCompletion = completeFromList([
   {label: "next", type: "keyword"},
 ])
 
+// Deindent keywords — when these appear on the current line, deindent to
+// match the opening keyword (def, class, if, etc.)
+const DEINDENT = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/
+
+// Ruby indentation: indent after block-opening keywords, deindent on
+// closing/intermediate keywords. The indent function checks textAfter
+// (what the user is typing on the current line) to deindent immediately
+// when typing `end`, `else`, `elsif`, etc.
+function rubyIndent(context: TreeIndentContext) {
+  const closing = DEINDENT.test(context.textAfter)
+  return context.baseIndent + (closing ? 0 : context.unit)
+}
+
+// For intermediate keywords (elsif, else, rescue, ensure, when, in) —
+// these are at the same level as the opening keyword, but content inside
+// them indents one level.
+function rubyIntermediateIndent(context: TreeIndentContext) {
+  const closing = DEINDENT.test(context.textAfter)
+  return context.baseIndent + (closing ? 0 : context.unit)
+}
+
 export const rubyLanguage = LRLanguage.define({
   name: "ruby",
   parser: parser.configure({
     props: [
       rubyHighlighting,
       indentNodeProp.add({
-        // Block bodies indent one level, deindent on end/else/etc.
-        "ClassBody ModuleBody MethodBody": context => {
-          const closing = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/.test(context.textAfter)
-          return context.baseIndent + (closing ? 0 : context.unit)
-        },
-        // Brace-delimited constructs use delimitedIndent
+        "ClassBody ModuleBody MethodBody": rubyIndent,
+        "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement": rubyIndent,
+        BeginBlock: rubyIndent,
+        DoBlock: rubyIndent,
+        "ElsifClause ElseClause WhenClause InClause RescueClause EnsureClause": rubyIntermediateIndent,
         Block: delimitedIndent({closing: "}"}),
         Array: delimitedIndent({closing: "]"}),
         Hash: delimitedIndent({closing: "}"}),
         ArgList: delimitedIndent({closing: ")"}),
         ParamList: delimitedIndent({closing: ")"}),
-        // Control flow bodies indent, deindent on end/else/etc.
-        "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement": context => {
-          const closing = /^\s*(end|else|elsif|when|in)\b/.test(context.textAfter)
-          return context.baseIndent + (closing ? 0 : context.unit)
-        },
-        BeginBlock: context => {
-          const closing = /^\s*(end|rescue|ensure|else)\b/.test(context.textAfter)
-          return context.baseIndent + (closing ? 0 : context.unit)
-        },
-        DoBlock: context => {
-          const closing = /^\s*end\b/.test(context.textAfter)
-          return context.baseIndent + (closing ? 0 : context.unit)
-        },
-        // Intermediate keywords stay at parent indent level
-        "ElsifClause ElseClause WhenClause InClause RescueClause EnsureClause": context => {
-          const closing = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/.test(context.textAfter)
-          return context.baseIndent + (closing ? 0 : context.unit)
-        },
       }),
       foldNodeProp.add({
         "ClassBody ModuleBody MethodBody Block DoBlock BeginBlock": foldInside,

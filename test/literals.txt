@@ -102,6 +102,14 @@ Program(ExpressionStatement(CharacterLiteral))
 
 Program(ExpressionStatement(CharacterLiteral))
 
+# Hash with symbol-key shorthand
+
+{name: "Alice", age: 30}
+
+==>
+
+Program(ExpressionStatement(Hash(HashPair(Identifier, InterpolatedString(StringContent)), HashPair(Identifier, Integer))))
+
 # Word array literal
 
 %w[foo bar baz]

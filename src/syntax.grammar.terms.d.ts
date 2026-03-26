@@ -6,3 +6,5 @@ export declare const lessThanEqOp: number
 export declare const inheritsOp: number
 export declare const PercentStringLiteral: number
 export declare const moduloOp: number
+export declare const Symbol: number
+export declare const colonOp: number
