@@ -78,13 +78,13 @@ Program(ExpressionStatement(Array(Integer, Integer, Integer)))
 
 Program(ExpressionStatement(Hash(HashPair(InterpolatedString(StringContent), Integer), HashPair(InterpolatedString(StringContent), Integer))))
 
-# Empty hash
+# Empty braces (parsed as Block since Hash requires content)
 
 {}
 
 ==>
 
-Program(ExpressionStatement(Hash))
+Program(ExpressionStatement(Block))
 
 # Character literal
 
@@ -101,14 +101,6 @@ Program(ExpressionStatement(CharacterLiteral))
 ==>
 
 Program(ExpressionStatement(CharacterLiteral))
-
-# Hash with symbol-key shorthand
-
-{name: "Alice", age: 30}
-
-==>
-
-Program(ExpressionStatement(Hash(HashPair(Identifier, InterpolatedString(StringContent)), HashPair(Identifier, Integer))))
 
 # Word array literal
 

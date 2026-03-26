@@ -199,3 +199,21 @@ Foo::Bar::Baz
 ==>
 
 Program(ExpressionStatement(ScopeResolution(ScopeResolution(Constant, Constant), Constant)))
+
+# Block attached to method call
+
+items.each { |x| puts(x) }
+
+==>
+
+Program(ExpressionStatement(BlockCall(MethodCall(Identifier, Identifier), Block(BlockParams(Identifier), ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier))))))))
+
+# Do block attached to method call
+
+items.each do |x|
+  puts(x)
+end
+
+==>
+
+Program(ExpressionStatement(BlockCall(MethodCall(Identifier, Identifier), DoBlock(do, BlockParams(Identifier), ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier)))), end))))

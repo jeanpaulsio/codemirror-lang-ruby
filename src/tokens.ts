@@ -1,7 +1,7 @@
 import {ExternalTokenizer} from "@lezer/lr"
 import {
   Regex, divideOp,
-  Heredoc, lessThanOp, lessThanEqOp,
+  Heredoc, lessThanOp, lessThanEqOp, inheritsOp,
 } from "./syntax.grammar.terms"
 
 // ============================================================
@@ -83,7 +83,13 @@ export const lessThanTokenizer = new ExternalTokenizer((input, stack) => {
     return
   }
 
-  // Plain <
+  // Inheritance < (class Foo < Bar)
+  if (stack.canShift(inheritsOp)) {
+    input.acceptToken(inheritsOp, 1)
+    return
+  }
+
+  // Plain < (comparison)
   if (stack.canShift(lessThanOp)) {
     input.acceptToken(lessThanOp, 1)
   }
