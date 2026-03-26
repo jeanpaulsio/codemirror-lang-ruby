@@ -109,3 +109,27 @@ Program(ExpressionStatement(CharacterLiteral))
 ==>
 
 Program(ExpressionStatement(Hash(HashPair(Identifier, InterpolatedString(StringContent)), HashPair(Identifier, Integer))))
+
+# Word array literal
+
+%w[foo bar baz]
+
+==>
+
+Program(ExpressionStatement(PercentStringLiteral))
+
+# Symbol array literal
+
+%i[name age]
+
+==>
+
+Program(ExpressionStatement(PercentStringLiteral))
+
+# Percent string with parens
+
+%q(hello world)
+
+==>
+
+Program(ExpressionStatement(PercentStringLiteral))

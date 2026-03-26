@@ -16,6 +16,7 @@ export const rubyHighlighting = styleTags({
   Integer: t.integer,
   Float: t.float,
   CharacterLiteral: t.character,
+  PercentStringLiteral: t.string,
   SingleQuotedString: t.string,
   InterpolatedString: t.string,
   StringContent: t.string,

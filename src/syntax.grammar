@@ -139,6 +139,7 @@ expression {
   SingleQuotedString |
   InterpolatedString |
   CharacterLiteral |
+  PercentStringLiteral |
   Symbol |
   Array |
   Hash |
@@ -292,6 +293,16 @@ semi { ";" | newline }
 
   Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
   CharacterLiteral { "?" ("\\" _ | ![$ \t\n\r]) }
+
+  // %-literals: %w[a b], %i[foo], %q(str), %Q(str), %r(regex), %()
+  // Supports [] () {} <> delimiters. Other delimiters (e.g. %w|a b|) need
+  // an external tokenizer and are deferred.
+  PercentStringLiteral {
+    "%" $[wWiIqQrsx]? "[" (![\\\]] | "\\" _)* "]" |
+    "%" $[wWiIqQrsx]? "(" (![\\)] | "\\" _)* ")" |
+    "%" $[wWiIqQrsx]? "{" (![\\}] | "\\" _)* "}" |
+    "%" $[wWiIqQrsx]? "<" (![\\>] | "\\" _)* ">"
+  }
   // Regex token removed — it conflicts with division (/). Regex support
   // requires an external tokenizer (Phase 4) that checks preceding context.
 
@@ -314,6 +325,7 @@ semi { ";" | newline }
     Identifier,
     Symbol,
     CharacterLiteral,
+    PercentStringLiteral,
     CompareOp,
     "=>",
     "->",
