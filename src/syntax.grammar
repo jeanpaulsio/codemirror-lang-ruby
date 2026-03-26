@@ -28,7 +28,25 @@ statement {
   YieldStatement |
   RaiseStatement |
   Assignment |
-  MultipleAssignment
+  MultipleAssignment |
+  BareMethodCall
+}
+
+// Bare method calls without parens for common Ruby methods.
+// Uses a curated keyword list to avoid ambiguity with local variables.
+BareMethodCall {
+  (bareMethod<"puts"> | bareMethod<"print"> | bareMethod<"p"> |
+   bareMethod<"warn"> | bareMethod<"fail"> |
+   bareMethod<"require"> | bareMethod<"require_relative"> |
+   bareMethod<"load"> | bareMethod<"autoload"> |
+   bareMethod<"include"> | bareMethod<"extend"> | bareMethod<"prepend"> |
+   bareMethod<"attr_reader"> | bareMethod<"attr_writer"> | bareMethod<"attr_accessor"> |
+   bareMethod<"public"> | bareMethod<"private"> | bareMethod<"protected"> |
+   bareMethod<"module_function"> |
+   bareMethod<"alias"> | bareMethod<"alias_method"> |
+   bareMethod<"using"> |
+   bareMethod<"throw"> | bareMethod<"catch">)
+  commaSep1<expression> semi?
 }
 
 // Three forms: with parens, without parens, and endless (Ruby 3.0+)
@@ -178,16 +196,22 @@ expression {
   Lambda |
   Range |
   TernaryExpression |
-  ConditionalModifier
+  ConditionalModifier |
+  ScopeResolution
 }
 
 // MethodCall requires either a receiver (expr.method) or args (method(args)).
 // A bare identifier without receiver or args is just an Identifier, not a MethodCall.
-// Supports both regular dot (.) and safe navigation (&.) operators.
+// Supports regular dot (.), safe navigation (&.), and scope resolution (::).
 MethodCall {
   expression !member "." Identifier ArgList? |
   expression !member "&." Identifier ArgList? |
   Identifier !call ArgList
+}
+
+// Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method
+ScopeResolution {
+  expression !member "::" (Constant | Identifier)
 }
 
 ArgList {
@@ -292,6 +316,7 @@ commaSep<expr> { (expr ("," expr)*)? }
 commaSep1<expr> { expr ("," expr)* }
 
 kw<term> { @specialize[@name={term}]<Identifier, term> }
+bareMethod<term> { @extend[@name={term}]<Identifier, term> }
 
 semi { ";" | newline }
 
@@ -335,7 +360,7 @@ semi { ";" | newline }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
 
-  "(" ")" "[" "]" "{" "}" "." "&." "," ";" ":" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
+  "(" ")" "[" "]" "{" "}" "." "&." "::" "," ";" ":" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
 
   @precedence {
     BlockComment,
@@ -351,6 +376,7 @@ semi { ";" | newline }
     CharacterLiteral,
     PercentStringLiteral,
     CompareOp,
+    "::",
     "=>",
     "->",
     ArithOp,
