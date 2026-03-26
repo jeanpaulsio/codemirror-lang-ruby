@@ -113,66 +113,57 @@ Known limitations (to be addressed in later phases):
 
 ### Phase 1: Stabilize the starter grammar ✅
 - [x] Get `npm run build` passing cleanly
-- [x] Get all existing test cases passing (26/26)
+- [x] Get all existing test cases passing
 - [x] Fix all shift/reduce and reduce/reduce conflicts
 - [x] Set up GitHub Actions CI
 
-### Phase 2: String interpolation and external tokenizers
-This phase introduces `src/tokens.ts` -- our first external tokenizer file.
+### Phase 2: String interpolation and literals ✅
+- [x] String interpolation: `"hello #{name}"` via `@local tokens` pattern
+- [x] `%`-literals: `%w[a b c]`, `%i[foo bar]`, `%q(string)`, `%Q(string)` with `[]`, `()`, `{}`, `<>` delimiters
+- [x] Character literals: `?a`, `?\n`
 
-- [ ] String interpolation: `"hello #{name}"` -- use `@local tokens` pattern (see `@lezer/javascript` template literals)
-- [ ] Heredocs: `<<~RUBY`, `<<-RUBY`, `<<RUBY` -- needs `ContextTracker` to store delimiter
-- [ ] `%`-literals: `%w[a b c]`, `%i[foo bar]`, `%q(string)`, `%Q(string)`, `%r(regex)`
-- [ ] Character literals: `?a`
+### Phase 3: Method call edge cases ✅ (partial)
+- [x] Hash symbol-key shorthand: `{ name: "Alice" }`
+- [x] Splat in method calls: `foo(*args, **kwargs, &block)`
+- [x] Safe navigation: `obj&.method`
+- Deferred to external tokenizer (see open issues):
+  - Block/DoBlock attachment (#8)
+  - Bare method calls without parens (#9)
 
-**What's an external tokenizer?** The `.grammar` file can only express regular patterns. Some Ruby syntax needs runtime logic:
-- String interpolation requires tracking `#{}` brace depth inside strings
-- Heredocs require remembering an arbitrary delimiter word
-- Regex vs division requires knowing what token came before `/`
+### Phase 4: Operators and constructs ✅ (partial)
+- [x] Conditional assignment: `||=`, `&&=` (already in AssignOp)
+- [x] Multiple assignment: `a, b = 1, 2`
+- [x] Destructuring: `a, *b = [1, 2, 3]`
+- [x] Endless method: `def square(x) = x * x` (Ruby 3.0+)
+- [x] Operator precedence: `**` @right > `*`/`/` @left > `+`/`-` @left
+- Deferred to external tokenizer:
+  - Regex `/` vs division (#7)
 
-An external tokenizer is a TypeScript function that the parser calls when it needs a token the grammar can't express. It reads characters from the input stream, decides what token to emit, and hands control back to the parser. Declared in the grammar with `@external tokens tokenizer from "./tokens" { Token1, Token2 }` and implemented in `src/tokens.ts` as `ExternalTokenizer` instances. See `@lezer/javascript` and `@lezer/python` for working examples.
+### Phase 5: Pattern matching (Ruby 3.0+) ✅ (partial)
+- [x] `case/in` pattern matching with `InClause`
+- [x] Pin operator: `in ^variable` (scoped to InClause)
+- Deferred:
+  - Guard clauses (`in x if x > 0`) — conflicts with IfStatement in LR parser
 
-### Phase 3: Block attachment + method call edge cases
-- [ ] Block/DoBlock attachment to method calls: `items.each { |x| x }`, `items.each do |x| x end`
-- [ ] Hash symbol-key shorthand: `{ name: "Alice" }` (needs `:` vs Symbol disambiguation)
-- [ ] Bare method calls without parens: `puts "hello"`, `attr_reader :name`
-- [ ] Operator method definitions: `def <=>(other)`, `def [](index)`, `def []=(index, val)`
-- [ ] Method names with `?`, `!`, `=` suffixes (separate MethodName token, context-dependent)
-- [ ] Splat in method calls: `foo(*args, **kwargs, &block)`
-- [ ] Safe navigation: `obj&.method`
+### Phase 6: Editor integration ✅
+- [x] Indentation: `indentNodeProp` for all block constructs, `delimitedIndent` for `[]`/`{}`/`()`
+- [x] Folding: method/class/module bodies, blocks, control flow, strings
+- [x] Autocompletion: 31 Ruby keywords via `completeFromList()`
+- [x] Bracket closing, comment toggling
+- [x] 67 test cases
 
-### Phase 4: Regex + more operators
-- [ ] Regex: `/` vs division ambiguity (external tokenizer checks preceding context)
-- [ ] Conditional assignment: `||=`, `&&=`
-- [ ] Multiple assignment: `a, b = 1, 2`
-- [ ] Destructuring: `a, *b = [1, 2, 3]`
-- [ ] Defined? operator
-- [ ] Endless method: `def square(x) = x * x` (Ruby 3.0+)
-- [ ] Numbered block params: `_1`, `_2` (Ruby 2.7+)
-- [ ] Proc/lambda: `proc { }`, `lambda { }`, `Proc.new { }`
+### Phase 7: Production readiness ✅
+- [x] Demo page with GitHub Pages deployment
+- [x] README with installation and usage docs
+- [x] LICENSE (MIT)
 
-### Phase 5: Pattern matching (Ruby 3.0+)
-- [ ] `case/in` pattern matching
-- [ ] Array patterns: `in [x, y, *rest]`
-- [ ] Hash patterns: `in { name:, age: }`
-- [ ] Find patterns: `in [*, x, *]`
-- [ ] Guard clauses: `in x if x > 0`
-- [ ] Pin operator: `in ^variable`
-
-### Phase 6: Editor integration
-This is what makes the package actually *usable* in an editor, not just a parser.
-
-- [ ] **Indentation**: proper `indentNodeProp` for every block construct; use `delimitedIndent` for `[]`/`{}`; deindent on `end`/`else`/`elsif`/`when`/`rescue`/`ensure`
-- [ ] **Folding**: fold ranges for method/class/module bodies, blocks, multiline strings, heredocs
-- [ ] **Autocompletion**: keyword completions (`def`, `class`, `if`, `end`, etc.) via `completeFromList()`; snippets for common patterns (`def...end`, `class...end`, `begin...rescue...end`)
-- [ ] **Error recovery**: add `@isGroup` for expressions/statements; add `[isolate]` on strings/comments for better incremental parsing
-- [ ] **Comprehensive tests**: 50+ test cases covering edge cases, error recovery, and real-world Ruby patterns (Rails, RSpec)
-
-### Phase 7: Production readiness
-- [ ] Performance testing with large files (1000+ lines of real Rails code)
-- [ ] npm package publishing setup (README, LICENSE, .npmignore, package.json metadata)
-- [ ] Demo page / playground (CodeMirror editor with Ruby highlighting)
-- [ ] Comparison testing against tree-sitter-ruby's test corpus
+### Open issues (external tokenizer required)
+These are the remaining hard problems that need `src/tokens.ts`:
+- [#7](https://github.com/jeanpaulsio/codemirror-lang-ruby/issues/7) — Regex literals (`/pattern/` vs division)
+- [#8](https://github.com/jeanpaulsio/codemirror-lang-ruby/issues/8) — Block attachment to method calls
+- [#9](https://github.com/jeanpaulsio/codemirror-lang-ruby/issues/9) — Bare method calls without parens
+- [#10](https://github.com/jeanpaulsio/codemirror-lang-ruby/issues/10) — Heredoc support
+- [#11](https://github.com/jeanpaulsio/codemirror-lang-ruby/issues/11) — `%`-literal interpolation and non-bracket delimiters
 
 ## Coding Standards
 
@@ -185,15 +176,17 @@ This is what makes the package actually *usable* in an editor, not just a parser
 
 ## Known Hard Problems
 
-These are documented so you can plan around them:
+These require an external tokenizer (`src/tokens.ts`) and are tracked as GitHub issues:
 
-1. **`/` ambiguity**: `/regex/` vs `a / b`. Requires an external tokenizer that tracks whether a `/` is in a "regex-allowed" position (after operators, keywords, `(`, `[`, etc.) vs "division" position (after identifiers, numbers, `)`, `]`). See `@lezer/javascript` for exactly this pattern.
+1. **`/` ambiguity** (#7): `/regex/` vs `a / b`. Requires an external tokenizer that checks preceding context. See `@lezer/javascript` for this pattern.
 
-2. **String interpolation**: `"hello #{1 + 2}"` nests arbitrary Ruby expressions inside strings. Requires an external tokenizer that tracks brace depth. See `@lezer/javascript` template literal handling.
+2. **Block attachment** (#8): `items.each { |x| x }`. The `MethodCall` expression reduces before `{` can attach. Needs grammar restructure or external tokenizer.
 
-3. **Heredocs**: `<<~RUBY\n  code\nRUBY` -- the delimiter is arbitrary, can be indented, and can stack (`<<A; <<B`). This is one of the hardest parts. tree-sitter-ruby uses an external scanner for this.
+3. **Optional parentheses** (#9): `puts "hello"` vs `puts("hello")`. The biggest source of parse conflicts in Ruby. tree-sitter-ruby uses an external scanner.
 
-4. **Optional parentheses**: `puts "hello"` and `puts("hello")` are both valid. This creates ambiguity in the grammar. Lezer's GLR mode (`@ambiguity`) may help, but method calls without parens are the biggest source of parse conflicts in Ruby.
+4. **Heredocs** (#10): `<<~RUBY\n  code\nRUBY`. The delimiter is arbitrary, can be indented, and can stack. Needs a `ContextTracker`.
+
+5. **String interpolation** is SOLVED -- uses `@local tokens` pattern from `@lezer/javascript`.
 
 ## Git Workflow
 
