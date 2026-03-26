@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>codemirror-lang-ruby Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f0f6fc;
+    }
+
+    header h1 span {
+      color: #e06c75;
+    }
+
+    header p {
+      margin-top: 4px;
+      font-size: 14px;
+      color: #8b949e;
+    }
+
+    header p a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+
+    header p a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      flex: 1;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-container {
+      flex: 1;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      overflow: hidden;
+      min-height: 400px;
+    }
+
+    .cm-editor {
+      height: 100%;
+    }
+
+    .cm-editor .cm-scroller {
+      font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    footer {
+      padding: 16px 32px;
+      border-top: 1px solid #21262d;
+      font-size: 12px;
+      color: #484f58;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>codemirror-lang-<span>ruby</span></h1>
+    <p>Ruby language support for CodeMirror 6 &mdash; <a href="https://github.com/jeanpaulsio/codemirror-lang-ruby">GitHub</a></p>
+  </header>
+  <main>
+    <div class="editor-container" id="editor"></div>
+  </main>
+  <footer>
+    Lezer grammar + CodeMirror 6 language package
+  </footer>
+  <script src="demo.js"></script>
+</body>
+</html>
