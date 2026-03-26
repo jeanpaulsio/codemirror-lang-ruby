@@ -6,7 +6,7 @@ end
 
 ==>
 
-Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(Identifier, ArgList(Identifier)))), end))
+Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier))))), end))
 
 # Class definition
 
@@ -112,7 +112,7 @@ end
 
 ==>
 
-Program(ForStatement(for, Identifier, in, Identifier, ExpressionStatement(MethodCall(Identifier, ArgList(Identifier))), end))
+Program(ForStatement(for, Identifier, in, Identifier, ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier)))), end))
 
 # Begin/rescue/ensure
 

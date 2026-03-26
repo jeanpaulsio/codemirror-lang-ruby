@@ -20,7 +20,7 @@ puts("hello")
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, ArgList(InterpolatedString(StringContent)))))
+Program(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(InterpolatedString(StringContent))))))
 
 # Chained method call
 
@@ -46,7 +46,7 @@ end
 
 ==>
 
-Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), DoBlock(do, ExpressionStatement(MethodCall(Identifier, ArgList(Identifier))), end))))
+Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), DoBlock(do, ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier)))), end))))
 
 # Lambda
 
@@ -118,4 +118,44 @@ puts(x) if condition
 
 ==>
 
-Program(ExpressionStatement(ConditionalModifier(MethodCall(Identifier, ArgList(Identifier)), if, Identifier)))
+Program(ExpressionStatement(ConditionalModifier(MethodCall(Identifier, ArgList(Arg(Identifier))), if, Identifier)))
+
+# Safe navigation operator
+
+obj&.name
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, Identifier)))
+
+# Chained safe navigation
+
+obj&.name&.upcase
+
+==>
+
+Program(ExpressionStatement(MethodCall(MethodCall(Identifier, Identifier), Identifier)))
+
+# Splat in method call
+
+foo(*args, **kwargs, &block)
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(SplatArg(Identifier)), Arg(DoubleSplatArg(Identifier)), Arg(BlockArg(Identifier))))))
+
+# Multiplication
+
+x * y
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, Identifier)))
+
+# Exponentiation
+
+x ** 2
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, Integer)))

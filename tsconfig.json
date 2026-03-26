@@ -4,7 +4,7 @@
     "target": "es6",
     "module": "es2020",
     "newLine": "lf",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "declaration": true,
     "declarationDir": "dist",
     "outDir": "dist"

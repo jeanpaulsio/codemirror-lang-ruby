@@ -138,6 +138,7 @@ expression {
   Float |
   SingleQuotedString |
   InterpolatedString |
+  CharacterLiteral |
   Symbol |
   Array |
   Hash |
@@ -157,23 +158,29 @@ expression {
 
 // MethodCall requires either a receiver (expr.method) or args (method(args)).
 // A bare identifier without receiver or args is just an Identifier, not a MethodCall.
-// The no-receiver form uses Identifier because at expression-start, the tokenizer
-// produces Identifier (higher precedence). After ".", only Identifier is expected.
-// Block/DoBlock attachment to method calls is a Phase 3 concern
-// that requires an external tokenizer for proper handling.
-// For now: receiver.method(args) and method(args) work; blocks are standalone.
+// Supports both regular dot (.) and safe navigation (&.) operators.
 MethodCall {
   expression !member "." Identifier ArgList? |
+  expression !member "&." Identifier ArgList? |
   Identifier !call ArgList
 }
 
 ArgList {
-  "(" commaSep<expression> ")"
+  "(" commaSep<Arg> ")"
+}
+
+Arg {
+  SplatArg { "*" expression } |
+  DoubleSplatArg { "**" expression } |
+  BlockArg { "&" expression } |
+  expression
 }
 
 BinaryExpression {
-  expression !arith ArithOp expression |
-  expression !arith "-" expression |
+  expression !add ArithOp expression |
+  expression !add "-" expression |
+  expression !mul "*" expression |
+  expression !exp "**" expression |
   expression !compare CompareOp expression |
   expression !logic LogicOp expression |
   expression !logic kw<"and"> expression |
@@ -239,14 +246,15 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
 
 Array { "[" commaSep<expression> "]" }
 Hash { "{" (HashPair ("," HashPair)*)? "}" }
-// TODO: Add symbol-key shorthand (key: value) once we have context-dependent tokenization
-HashPair { expression "=>" expression }
+HashPair { expression "=>" expression | Identifier ":" expression }
 
 @precedence {
   member @left,
   call @right,
   unary,
-  arith @left,
+  exp @right,
+  mul @left,
+  add @left,
   range @right,
   compare @left,
   logic @left,
@@ -283,15 +291,16 @@ semi { ";" | newline }
   }
 
   Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  CharacterLiteral { "?" ("\\" _ | ![$ \t\n\r]) }
   // Regex token removed — it conflicts with division (/). Regex support
   // requires an external tokenizer (Phase 4) that checks preceding context.
 
-  ArithOp { "+" | "*" | "/" | "%" | "**" }
+  ArithOp { "+" | "/" | "%" }
   CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
 
-  "(" ")" "[" "]" "{" "}" "." "," ";" ":" "|" "?" ".." "..." "=>" "->" "&" "*" "**"
+  "(" ")" "[" "]" "{" "}" "." "&." "," ";" ":" "|" "?" ".." "..." "=>" "->" "&" "*" "**"
 
   @precedence {
     BlockComment,
@@ -304,6 +313,7 @@ semi { ";" | newline }
     Constant,
     Identifier,
     Symbol,
+    CharacterLiteral,
     CompareOp,
     "=>",
     "->",
@@ -311,6 +321,7 @@ semi { ";" | newline }
     AssignOp,
     "...",
     "..",
+    "&.",
     ".",
     "**",
     "*",

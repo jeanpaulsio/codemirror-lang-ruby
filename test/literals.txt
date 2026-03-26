@@ -85,3 +85,27 @@ Program(ExpressionStatement(Hash(HashPair(InterpolatedString(StringContent), Int
 ==>
 
 Program(ExpressionStatement(Hash))
+
+# Character literal
+
+?a
+
+==>
+
+Program(ExpressionStatement(CharacterLiteral))
+
+# Character literal with escape
+
+?\n
+
+==>
+
+Program(ExpressionStatement(CharacterLiteral))
+
+# Hash with symbol-key shorthand
+
+{name: "Alice", age: 30}
+
+==>
+
+Program(ExpressionStatement(Hash(HashPair(Identifier, InterpolatedString(StringContent)), HashPair(Identifier, Integer))))
