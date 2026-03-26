@@ -1,0 +1,79 @@
+# Integer
+
+42
+
+==>
+
+Program(ExpressionStatement(Integer))
+
+# Float
+
+3.14
+
+==>
+
+Program(ExpressionStatement(Float))
+
+# String (single quotes)
+
+'hello'
+
+==>
+
+Program(ExpressionStatement(String))
+
+# String (double quotes)
+
+"hello world"
+
+==>
+
+Program(ExpressionStatement(String))
+
+# Symbol
+
+:foo
+
+==>
+
+Program(ExpressionStatement(Symbol))
+
+# Nil
+
+nil
+
+==>
+
+Program(ExpressionStatement(nil))
+
+# Boolean true
+
+true
+
+==>
+
+Program(ExpressionStatement(true))
+
+# Boolean false
+
+false
+
+==>
+
+Program(ExpressionStatement(false))
+
+# Array
+
+[1, 2, 3]
+
+==>
+
+Program(ExpressionStatement(Array(Integer, Integer, Integer)))
+
+# Hash with rocket
+
+{"a" => 1, "b" => 2}
+
+==>
+
+Program(ExpressionStatement(Hash(HashPair(String, Integer), HashPair(String, Integer))))

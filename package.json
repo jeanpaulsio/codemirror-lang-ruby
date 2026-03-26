@@ -1,0 +1,41 @@
+{
+  "name": "codemirror-lang-ruby",
+  "version": "0.1.0",
+  "description": "Ruby language support for CodeMirror 6, built on a Lezer grammar",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "import": "./dist/index.js",
+    "require": "./dist/index.cjs"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeanpaulsio/codemirror-lang-ruby"
+  },
+  "scripts": {
+    "build": "rollup -c",
+    "prepare": "rollup -c",
+    "test": "mocha test/test.js",
+    "test:watch": "mocha test/test.js --watch",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/language": "^6.0.0",
+    "@lezer/common": "^1.0.0",
+    "@lezer/highlight": "^1.0.0",
+    "@lezer/lr": "^1.0.0"
+  },
+  "devDependencies": {
+    "@lezer/generator": "^1.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "mocha": "^10.0.0",
+    "rollup": "^4.0.0",
+    "tslib": "^2.6.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,57 @@
+# Variable assignment
+
+x = 42
+
+==>
+
+Program(Assignment(Identifier, AssignOp, Integer))
+
+# Instance variable assignment
+
+@name = "Alice"
+
+==>
+
+Program(Assignment(InstanceVariable, AssignOp, String))
+
+# Method call
+
+puts("hello")
+
+==>
+
+Program(ExpressionStatement(MethodCall(MethodName, ArgList(String))))
+
+# Chained method call
+
+foo.bar
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, MethodName)))
+
+# Block with braces
+
+items.each { |x| puts(x) }
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, MethodName, Block(BlockParams(Identifier), ExpressionStatement(MethodCall(MethodName, ArgList(Identifier)))))))
+
+# Do block
+
+items.each do |x|
+  puts(x)
+end
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, MethodName, DoBlock(do, BlockParams(Identifier), ExpressionStatement(MethodCall(MethodName, ArgList(Identifier))), end))))
+
+# Lambda
+
+f = -> (x) { x }
+
+==>
+
+Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), Block(ExpressionStatement(Identifier)))))

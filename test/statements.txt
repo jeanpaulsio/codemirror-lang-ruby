@@ -1,0 +1,95 @@
+# Method definition
+
+def greet(name)
+  puts(name)
+end
+
+==>
+
+Program(MethodDef(def, MethodName, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(MethodName, ArgList(Identifier)))), end))
+
+# Class definition
+
+class Dog
+end
+
+==>
+
+Program(ClassDef(class, Constant, ClassBody, end))
+
+# Class with inheritance
+
+class Dog < Animal
+end
+
+==>
+
+Program(ClassDef(class, Constant, CompareOp, Constant, ClassBody, end))
+
+# Module definition
+
+module Greetable
+end
+
+==>
+
+Program(ModuleDef(module, Constant, ModuleBody, end))
+
+# If statement
+
+if x
+  y
+end
+
+==>
+
+Program(IfStatement(if, Identifier, ExpressionStatement(Identifier), end))
+
+# If/elsif/else
+
+if x
+  a
+elsif y
+  b
+else
+  c
+end
+
+==>
+
+Program(IfStatement(if, Identifier, ExpressionStatement(Identifier), ElsifClause(elsif, Identifier, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+
+# Unless statement
+
+unless done
+  work
+end
+
+==>
+
+Program(UnlessStatement(unless, Identifier, ExpressionStatement(Identifier), end))
+
+# While loop
+
+while running
+  step
+end
+
+==>
+
+Program(WhileStatement(while, Identifier, ExpressionStatement(Identifier), end))
+
+# Case/when
+
+case x
+when 1
+  a
+when 2
+  b
+else
+  c
+end
+
+==>
+
+Program(CaseStatement(case, Identifier, WhenClause(when, Integer, ExpressionStatement(Identifier)), WhenClause(when, Integer, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))

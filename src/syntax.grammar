@@ -1,0 +1,280 @@
+// Ruby grammar for Lezer
+//
+// This is a starter grammar covering core Ruby constructs.
+// It will be extended incrementally -- see CLAUDE.md for the full roadmap.
+//
+// References:
+//   - tree-sitter-ruby: https://github.com/tree-sitter/tree-sitter-ruby
+//   - Ruby syntax docs: https://docs.ruby-lang.org/en/master/syntax_rdoc.html
+//   - Lezer grammar guide: https://lezer.codemirror.net/docs/guide/
+
+@top Program { statement* }
+
+@skip { whitespace | LineComment | BlockComment }
+
+statement {
+  ExpressionStatement { expression semi } |
+  MethodDef |
+  ClassDef |
+  ModuleDef |
+  IfStatement |
+  UnlessStatement |
+  WhileStatement |
+  UntilStatement |
+  ForStatement |
+  CaseStatement |
+  BeginBlock |
+  ReturnStatement |
+  YieldStatement |
+  RaiseStatement |
+  Assignment
+}
+
+MethodDef {
+  kw<"def"> MethodName ParamList? semi? MethodBody kw<"end">
+}
+
+MethodBody { statement* }
+
+ParamList {
+  "(" commaSep<Param> ")"
+}
+
+Param {
+  SplatParam |
+  DoubleSplatParam |
+  BlockParam |
+  DefaultParam |
+  Identifier
+}
+
+SplatParam { "*" Identifier }
+DoubleSplatParam { "**" Identifier }
+BlockParam { "&" Identifier }
+DefaultParam { Identifier "=" expression }
+
+ClassDef {
+  kw<"class"> Constant (CompareOp Constant)? semi? ClassBody kw<"end">
+}
+
+ClassBody { statement* }
+
+ModuleDef {
+  kw<"module"> Constant semi? ModuleBody kw<"end">
+}
+
+ModuleBody { statement* }
+
+IfStatement {
+  kw<"if"> expression semi? statement* ElsifClause* ElseClause? kw<"end">
+}
+
+ElsifClause {
+  kw<"elsif"> expression semi? statement*
+}
+
+ElseClause {
+  kw<"else"> semi? statement*
+}
+
+UnlessStatement {
+  kw<"unless"> expression semi? statement* ElseClause? kw<"end">
+}
+
+WhileStatement {
+  kw<"while"> expression semi? statement* kw<"end">
+}
+
+UntilStatement {
+  kw<"until"> expression semi? statement* kw<"end">
+}
+
+ForStatement {
+  kw<"for"> Identifier kw<"in"> expression semi? statement* kw<"end">
+}
+
+CaseStatement {
+  kw<"case"> expression? semi? WhenClause* ElseClause? kw<"end">
+}
+
+WhenClause {
+  kw<"when"> commaSep1<expression> semi? statement*
+}
+
+BeginBlock {
+  kw<"begin"> semi? statement* RescueClause* ElseClause? EnsureClause? kw<"end">
+}
+
+RescueClause {
+  kw<"rescue"> (Constant ("," Constant)* ("=>" Identifier)?)? semi? statement*
+}
+
+EnsureClause {
+  kw<"ensure"> semi? statement*
+}
+
+ReturnStatement { kw<"return"> expression? semi }
+YieldStatement { kw<"yield"> expression? semi }
+RaiseStatement { kw<"raise"> expression? semi }
+
+Assignment {
+  (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
+  AssignOp expression semi
+}
+
+expression {
+  Identifier |
+  InstanceVariable |
+  ClassVariable |
+  GlobalVariable |
+  Constant |
+  Integer |
+  Float |
+  String |
+  Symbol |
+  Regex |
+  Array |
+  Hash |
+  kw<"nil"> |
+  kw<"true"> |
+  kw<"false"> |
+  kw<"self"> |
+  MethodCall |
+  BinaryExpression |
+  UnaryExpression |
+  ParenExpression |
+  Block |
+  DoBlock |
+  Lambda |
+  Range |
+  TernaryExpression |
+  ConditionalModifier
+}
+
+MethodCall {
+  (expression ".")? MethodName ArgList? Block?
+}
+
+ArgList {
+  "(" commaSep<expression> ")"
+}
+
+BinaryExpression {
+  expression !arith ArithOp expression |
+  expression !compare CompareOp expression |
+  expression !logic LogicOp expression |
+  expression !logic kw<"and"> expression |
+  expression !logic kw<"or"> expression
+}
+
+UnaryExpression {
+  ("!" | kw<"not"> | "-") expression
+}
+
+ParenExpression { "(" expression ")" }
+
+Block {
+  "{" BlockParams? statement* "}"
+}
+
+DoBlock {
+  kw<"do"> BlockParams? semi? statement* kw<"end">
+}
+
+BlockParams {
+  "|" commaSep<Identifier> "|"
+}
+
+Lambda {
+  "->" ParamList? (Block | DoBlock)
+}
+
+Range {
+  expression (".." | "...") expression
+}
+
+TernaryExpression {
+  expression "?" expression ":" expression
+}
+
+ConditionalModifier {
+  expression (kw<"if"> | kw<"unless"> | kw<"while"> | kw<"until">) expression
+}
+
+Array { "[" commaSep<expression> "]" }
+Hash { "{" commaSep<HashPair> "}" }
+HashPair { (expression "=>" expression) | (Identifier ":" expression) }
+
+@precedence {
+  arith @left,
+  compare @left,
+  logic @left
+}
+
+commaSep<expr> { (expr ("," expr)*)? }
+commaSep1<expr> { expr ("," expr)* }
+
+kw<term> { @specialize[@name={term}]<Identifier, term> }
+
+semi { ";" | newline }
+
+@tokens {
+  whitespace { $[ \t]+ }
+  newline { $[\n\r] }
+
+  LineComment { "#" ![\n\r]* }
+  BlockComment { "=begin" ![]*  "=end" }
+
+  Identifier { $[a-z_] $[a-zA-Z0-9_]* ("?" | "!")? }
+  InstanceVariable { "@" $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  ClassVariable { "@@" $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  GlobalVariable { "$" $[a-zA-Z0-9_]+ }
+  Constant { $[A-Z] $[a-zA-Z0-9_]* }
+  MethodName { $[a-z_] $[a-zA-Z0-9_]* ("?" | "!" | "=")? }
+
+  Integer { $[0-9]+ ("_" $[0-9]+)* }
+  Float { $[0-9]+ ("_" $[0-9]+)* "." $[0-9]+ ("_" $[0-9]+)* }
+
+  String {
+    "'" (![\\'] | "\\" _)* "'" |
+    '"' (![\\"] | "\\" _)* '"'
+  }
+
+  Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
+  Regex { "/" (![/\\\n] | "\\" _)* "/" $[imxo]* }
+
+  ArithOp { "+" | "-" | "*" | "/" | "%" | "**" }
+  CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
+  AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
+  LogicOp { "&&" | "||" }
+
+  "(" ")" "[" "]" "{" "}" "." "," ";" ":" "|" "?" ".." "..." "=>" "->" "&" "*" "**"
+
+  @precedence {
+    BlockComment,
+    LineComment,
+    Float,
+    Integer,
+    InstanceVariable,
+    ClassVariable,
+    GlobalVariable,
+    Constant,
+    MethodName,
+    Identifier,
+    Symbol,
+    Regex,
+    CompareOp,
+    ArithOp,
+    AssignOp,
+    "...",
+    "..",
+    ".",
+    "->",
+    "=>",
+    "**",
+    "*",
+    "&"
+  }
+}
+
+@detectDelim
