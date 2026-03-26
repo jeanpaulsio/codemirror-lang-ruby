@@ -24,7 +24,7 @@ end
 
 ==>
 
-Program(ClassDef(class, Constant, CompareOp, Constant, ClassBody, end))
+Program(ClassDef(class, Constant, Constant, ClassBody, end))
 
 # Module definition
 
