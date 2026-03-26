@@ -55,3 +55,67 @@ f = -> (x) { x }
 ==>
 
 Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), Block(ExpressionStatement(Identifier)))))
+
+# Arithmetic expression
+
+x + y
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, ArithOp, Identifier)))
+
+# Comparison expression
+
+x == y
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, CompareOp, Identifier)))
+
+# Logical expression
+
+x && y
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, LogicOp, Identifier)))
+
+# Unary not
+
+!x
+
+==>
+
+Program(ExpressionStatement(UnaryExpression(Identifier)))
+
+# Binary minus with unary minus
+
+x - -y
+
+==>
+
+Program(ExpressionStatement(BinaryExpression(Identifier, UnaryExpression(Identifier))))
+
+# Ternary expression
+
+x ? a : b
+
+==>
+
+Program(ExpressionStatement(TernaryExpression(Identifier, Identifier, Identifier)))
+
+# Range
+
+1..10
+
+==>
+
+Program(ExpressionStatement(Range(Integer, Integer)))
+
+# Conditional modifier
+
+puts(x) if condition
+
+==>
+
+Program(ExpressionStatement(ConditionalModifier(MethodCall(Identifier, ArgList(Identifier)), if, Identifier)))

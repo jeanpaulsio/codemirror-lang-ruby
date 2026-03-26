@@ -139,7 +139,6 @@ expression {
   SingleQuotedString |
   InterpolatedString |
   Symbol |
-  Regex |
   Array |
   Hash |
   kw<"nil"> |
@@ -284,7 +283,8 @@ semi { ";" | newline }
   }
 
   Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
-  Regex { "/" (![/\\\n] | "\\" _)* "/" $[imxo]* }
+  // Regex token removed — it conflicts with division (/). Regex support
+  // requires an external tokenizer (Phase 4) that checks preceding context.
 
   ArithOp { "+" | "*" | "/" | "%" | "**" }
   CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
@@ -304,7 +304,6 @@ semi { ";" | newline }
     Constant,
     Identifier,
     Symbol,
-    Regex,
     CompareOp,
     "=>",
     "->",
