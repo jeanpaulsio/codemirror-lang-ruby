@@ -28,6 +28,7 @@ npm run lint         # TypeScript type check
 src/
   syntax.grammar      # The Lezer grammar definition (THE core artifact)
   syntax.grammar.d.ts # Type declaration so TS can import .grammar
+  tokens.ts           # External tokenizers (Phase 2+: string interpolation, heredocs, regex)
   highlight.ts        # Maps grammar node names to @lezer/highlight tags
   index.ts            # Exports LRLanguage + LanguageSupport wrapper
 test/
@@ -83,40 +84,74 @@ The test runner (`test/test.js`) loads all `.txt` files, parses each source with
 
 ## Current State
 
-The grammar covers core Ruby constructs as a starting point:
-- Literals: integers, floats, strings (single/double quote), symbols, arrays, hashes, nil, true, false
+Phase 1 complete. The grammar builds cleanly and all 26 tests pass.
+
+What works:
+- Literals: integers, floats, strings (single/double quote), symbols, arrays, hashes (rocket `=>` only), nil, true, false
 - Definitions: methods (with params), classes (with inheritance), modules
 - Control flow: if/elsif/else, unless, while, until, for/in, case/when
 - Error handling: begin/rescue/ensure/raise
-- Expressions: assignment, method calls, chained calls, binary ops, unary ops, ternary
-- Blocks: brace blocks `{ }` and do/end blocks with block params
-- Lambdas: `->` syntax
+- Expressions: assignment, method calls (with receiver or args), chained calls, binary ops, unary ops, ternary
+- Lambdas: `->` syntax with brace or do/end blocks
 - Ranges: `..` and `...`
 - Variables: local, @instance, @@class, $global, Constants
 - Comments: line `#` and block `=begin/=end`
+- Highlight: path-based selectors for method names (`MethodDef/Identifier`, `MethodCall/Identifier`)
+- Editor: basic indentation, folding, comment toggling, bracket closing
+- CI: GitHub Actions runs lint + build + test on every PR
 
-## Roadmap: What Still Needs to Be Built
+Known limitations (to be addressed in later phases):
+- No string interpolation (`"hello #{name}"`)
+- No block attachment to method calls without parens (`items.each { |x| x }`)
+- No hash symbol-key shorthand (`{ name: "Alice" }`)
+- No bare method calls (`puts "hello"`)
+- No regex literals (ambiguous with division)
+- MethodName merged into Identifier (no `=` suffix on setter methods)
+- `semi` is optional on ExpressionStatement (workaround for EOF handling)
 
-### Phase 1: Fix and stabilize the starter grammar
-- [ ] Get `npm run build` passing cleanly
-- [ ] Get all existing test cases passing
-- [ ] Fix any ambiguities or conflicts in the grammar
-- [ ] The starter grammar is a SKETCH -- expect conflicts and issues that need iterative fixing
+## Roadmap
 
-### Phase 2: String interpolation and heredocs
-- [ ] String interpolation: `"hello #{name}"` -- requires external tokenizer
-- [ ] Heredocs: `<<~RUBY`, `<<-RUBY`, `<<RUBY` -- requires external tokenizer
+### Phase 1: Stabilize the starter grammar ✅
+- [x] Get `npm run build` passing cleanly
+- [x] Get all existing test cases passing (26/26)
+- [x] Fix all shift/reduce and reduce/reduce conflicts
+- [x] Set up GitHub Actions CI
+
+### Phase 2: String interpolation and external tokenizers
+This phase introduces `src/tokens.ts` -- our first external tokenizer file.
+
+- [ ] String interpolation: `"hello #{name}"` -- use `@local tokens` pattern (see `@lezer/javascript` template literals)
+- [ ] Heredocs: `<<~RUBY`, `<<-RUBY`, `<<RUBY` -- needs `ContextTracker` to store delimiter
 - [ ] `%`-literals: `%w[a b c]`, `%i[foo bar]`, `%q(string)`, `%Q(string)`, `%r(regex)`
 - [ ] Character literals: `?a`
 
-### Phase 3: Method and operator edge cases
-- [ ] Operator method definitions: `def <=>(other)`, `def [](index)`, `def []=(index, val)`
-- [ ] Method names with `?`, `!`, `=` suffixes
+**What's an external tokenizer?** The `.grammar` file can only express regular patterns. Some Ruby syntax needs runtime logic:
+- String interpolation requires tracking `#{}` brace depth inside strings
+- Heredocs require remembering an arbitrary delimiter word
+- Regex vs division requires knowing what token came before `/`
+
+An external tokenizer is a TypeScript function that the parser calls when it needs a token the grammar can't express. It reads characters from the input stream, decides what token to emit, and hands control back to the parser. Declared in the grammar with `@external tokens tokenizer from "./tokens" { Token1, Token2 }` and implemented in `src/tokens.ts` as `ExternalTokenizer` instances. See `@lezer/javascript` and `@lezer/python` for working examples.
+
+### Phase 3: Block attachment + method call edge cases
+- [ ] Block/DoBlock attachment to method calls: `items.each { |x| x }`, `items.each do |x| x end`
+- [ ] Hash symbol-key shorthand: `{ name: "Alice" }` (needs `:` vs Symbol disambiguation)
 - [ ] Bare method calls without parens: `puts "hello"`, `attr_reader :name`
+- [ ] Operator method definitions: `def <=>(other)`, `def [](index)`, `def []=(index, val)`
+- [ ] Method names with `?`, `!`, `=` suffixes (separate MethodName token, context-dependent)
 - [ ] Splat in method calls: `foo(*args, **kwargs, &block)`
 - [ ] Safe navigation: `obj&.method`
 
-### Phase 4: Pattern matching (Ruby 3.0+)
+### Phase 4: Regex + more operators
+- [ ] Regex: `/` vs division ambiguity (external tokenizer checks preceding context)
+- [ ] Conditional assignment: `||=`, `&&=`
+- [ ] Multiple assignment: `a, b = 1, 2`
+- [ ] Destructuring: `a, *b = [1, 2, 3]`
+- [ ] Defined? operator
+- [ ] Endless method: `def square(x) = x * x` (Ruby 3.0+)
+- [ ] Numbered block params: `_1`, `_2` (Ruby 2.7+)
+- [ ] Proc/lambda: `proc { }`, `lambda { }`, `Proc.new { }`
+
+### Phase 5: Pattern matching (Ruby 3.0+)
 - [ ] `case/in` pattern matching
 - [ ] Array patterns: `in [x, y, *rest]`
 - [ ] Hash patterns: `in { name:, age: }`
@@ -124,25 +159,20 @@ The grammar covers core Ruby constructs as a starting point:
 - [ ] Guard clauses: `in x if x > 0`
 - [ ] Pin operator: `in ^variable`
 
-### Phase 5: Advanced constructs
-- [ ] Regex: `/` vs division ambiguity (needs external tokenizer for context)
-- [ ] Proc/lambda: `proc { }`, `lambda { }`, `Proc.new { }`
-- [ ] Multiple assignment: `a, b = 1, 2`
-- [ ] Destructuring: `a, *b = [1, 2, 3]`
-- [ ] Conditional assignment: `||=`, `&&=`
-- [ ] Defined? operator
-- [ ] Ternary without spaces around `:`
-- [ ] Endless method: `def square(x) = x * x` (Ruby 3.0+)
-- [ ] Numbered block params: `_1`, `_2` (Ruby 2.7+)
+### Phase 6: Editor integration
+This is what makes the package actually *usable* in an editor, not just a parser.
 
-### Phase 6: Polish
-- [ ] Comprehensive test suite (aim for one test per Ruby construct)
-- [ ] Edge case corpus from real Ruby code (Rails, RSpec patterns)
-- [ ] Indentation support (indent after def/class/if/do, dedent on end)
-- [ ] Code folding (fold method bodies, class bodies, blocks)
-- [ ] Autocompletion hooks
-- [ ] Performance testing with large files
-- [ ] CI/CD with GitHub Actions
+- [ ] **Indentation**: proper `indentNodeProp` for every block construct; use `delimitedIndent` for `[]`/`{}`; deindent on `end`/`else`/`elsif`/`when`/`rescue`/`ensure`
+- [ ] **Folding**: fold ranges for method/class/module bodies, blocks, multiline strings, heredocs
+- [ ] **Autocompletion**: keyword completions (`def`, `class`, `if`, `end`, etc.) via `completeFromList()`; snippets for common patterns (`def...end`, `class...end`, `begin...rescue...end`)
+- [ ] **Error recovery**: add `@isGroup` for expressions/statements; add `[isolate]` on strings/comments for better incremental parsing
+- [ ] **Comprehensive tests**: 50+ test cases covering edge cases, error recovery, and real-world Ruby patterns (Rails, RSpec)
+
+### Phase 7: Production readiness
+- [ ] Performance testing with large files (1000+ lines of real Rails code)
+- [ ] npm package publishing setup (README, LICENSE, .npmignore, package.json metadata)
+- [ ] Demo page / playground (CodeMirror editor with Ruby highlighting)
+- [ ] Comparison testing against tree-sitter-ruby's test corpus
 
 ## Coding Standards
 
