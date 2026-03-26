@@ -13,7 +13,7 @@
 @skip { whitespace | LineComment | BlockComment }
 
 statement {
-  ExpressionStatement { expression semi } |
+  ExpressionStatement { expression !exprEnd semi? } |
   MethodDef |
   ClassDef |
   ModuleDef |
@@ -30,8 +30,10 @@ statement {
   Assignment
 }
 
+// Two forms: with explicit parens for params, or without (requires semi/newline)
 MethodDef {
-  kw<"def"> MethodName ParamList? semi? MethodBody kw<"end">
+  kw<"def"> Identifier ParamList semi? MethodBody kw<"end"> |
+  kw<"def"> Identifier semi MethodBody kw<"end">
 }
 
 MethodBody { statement* }
@@ -106,7 +108,11 @@ BeginBlock {
 }
 
 RescueClause {
-  kw<"rescue"> (Constant ("," Constant)* ("=>" Identifier)?)? semi? statement*
+  kw<"rescue"> ExceptionList? semi? statement*
+}
+
+ExceptionList {
+  Constant ~rescue ("," Constant)* ("=>" Identifier)?
 }
 
 EnsureClause {
@@ -119,7 +125,7 @@ RaiseStatement { kw<"raise"> expression? semi }
 
 Assignment {
   (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
-  AssignOp expression semi
+  AssignOp expression semi?
 }
 
 expression {
@@ -127,7 +133,7 @@ expression {
   InstanceVariable |
   ClassVariable |
   GlobalVariable |
-  Constant |
+  Constant ~rescue |
   Integer |
   Float |
   String |
@@ -143,16 +149,22 @@ expression {
   BinaryExpression |
   UnaryExpression |
   ParenExpression |
-  Block |
-  DoBlock |
   Lambda |
   Range |
   TernaryExpression |
   ConditionalModifier
 }
 
+// MethodCall requires either a receiver (expr.method) or args (method(args)).
+// A bare identifier without receiver or args is just an Identifier, not a MethodCall.
+// The no-receiver form uses Identifier because at expression-start, the tokenizer
+// produces Identifier (higher precedence). After ".", only Identifier is expected.
+// Block/DoBlock attachment to method calls without parens is a Phase 2 concern
+// that requires an external tokenizer for proper handling.
+// For now: receiver.method(args) and method(args) work; blocks are standalone.
 MethodCall {
-  (expression ".")? MethodName ArgList? Block?
+  expression !member "." Identifier ArgList? |
+  Identifier !call ArgList
 }
 
 ArgList {
@@ -161,6 +173,7 @@ ArgList {
 
 BinaryExpression {
   expression !arith ArithOp expression |
+  expression !arith "-" expression |
   expression !compare CompareOp expression |
   expression !logic LogicOp expression |
   expression !logic kw<"and"> expression |
@@ -168,7 +181,7 @@ BinaryExpression {
 }
 
 UnaryExpression {
-  ("!" | kw<"not"> | "-") expression
+  ("!" | kw<"not"> | "-") !unary expression
 }
 
 ParenExpression { "(" expression ")" }
@@ -190,25 +203,34 @@ Lambda {
 }
 
 Range {
-  expression (".." | "...") expression
+  expression !range (".." | "...") expression
 }
 
 TernaryExpression {
-  expression "?" expression ":" expression
+  expression !ternary "?" expression ":" expression
 }
 
 ConditionalModifier {
-  expression (kw<"if"> | kw<"unless"> | kw<"while"> | kw<"until">) expression
+  expression !modifier (kw<"if"> | kw<"unless"> | kw<"while"> | kw<"until">) expression
 }
 
 Array { "[" commaSep<expression> "]" }
-Hash { "{" commaSep<HashPair> "}" }
-HashPair { (expression "=>" expression) | (Identifier ":" expression) }
+// Hash requires at least one pair to avoid ambiguity with empty Block {}
+Hash { "{" HashPair ("," HashPair)* "}" }
+// TODO: Add symbol-key shorthand (key: value) once we have context-dependent tokenization
+HashPair { expression "=>" expression }
 
 @precedence {
+  member @left,
+  call @right,
+  unary,
   arith @left,
+  range @right,
   compare @left,
-  logic @left
+  logic @left,
+  ternary @right,
+  modifier @right,
+  exprEnd
 }
 
 commaSep<expr> { (expr ("," expr)*)? }
@@ -230,7 +252,6 @@ semi { ";" | newline }
   ClassVariable { "@@" $[a-zA-Z_] $[a-zA-Z0-9_]* }
   GlobalVariable { "$" $[a-zA-Z0-9_]+ }
   Constant { $[A-Z] $[a-zA-Z0-9_]* }
-  MethodName { $[a-z_] $[a-zA-Z0-9_]* ("?" | "!" | "=")? }
 
   Integer { $[0-9]+ ("_" $[0-9]+)* }
   Float { $[0-9]+ ("_" $[0-9]+)* "." $[0-9]+ ("_" $[0-9]+)* }
@@ -243,7 +264,7 @@ semi { ";" | newline }
   Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
   Regex { "/" (![/\\\n] | "\\" _)* "/" $[imxo]* }
 
-  ArithOp { "+" | "-" | "*" | "/" | "%" | "**" }
+  ArithOp { "+" | "*" | "/" | "%" | "**" }
   CompareOp { "==" | "!=" | "<" | ">" | "<=" | ">=" | "<=>" | "===" }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
@@ -259,18 +280,17 @@ semi { ";" | newline }
     ClassVariable,
     GlobalVariable,
     Constant,
-    MethodName,
     Identifier,
     Symbol,
     Regex,
     CompareOp,
+    "=>",
+    "->",
     ArithOp,
     AssignOp,
     "...",
     "..",
     ".",
-    "->",
-    "=>",
     "**",
     "*",
     "&"

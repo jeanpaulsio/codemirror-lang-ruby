@@ -6,7 +6,7 @@ end
 
 ==>
 
-Program(MethodDef(def, MethodName, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(MethodName, ArgList(Identifier)))), end))
+Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(Identifier, ArgList(Identifier)))), end))
 
 # Class definition
 

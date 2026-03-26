@@ -20,7 +20,7 @@ puts("hello")
 
 ==>
 
-Program(ExpressionStatement(MethodCall(MethodName, ArgList(String))))
+Program(ExpressionStatement(MethodCall(Identifier, ArgList(String))))
 
 # Chained method call
 
@@ -28,25 +28,25 @@ foo.bar
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, MethodName)))
+Program(ExpressionStatement(MethodCall(Identifier, Identifier)))
 
 # Block with braces
 
-items.each { |x| puts(x) }
+f = -> (x) { x + 1 }
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, MethodName, Block(BlockParams(Identifier), ExpressionStatement(MethodCall(MethodName, ArgList(Identifier)))))))
+Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), Block(ExpressionStatement(BinaryExpression(Identifier, ArithOp, Integer))))))
 
 # Do block
 
-items.each do |x|
+f = -> (x) do
   puts(x)
 end
 
 ==>
 
-Program(ExpressionStatement(MethodCall(Identifier, MethodName, DoBlock(do, BlockParams(Identifier), ExpressionStatement(MethodCall(MethodName, ArgList(Identifier))), end))))
+Program(Assignment(Identifier, AssignOp, Lambda(ParamList(Param(Identifier)), DoBlock(do, ExpressionStatement(MethodCall(Identifier, ArgList(Identifier))), end))))
 
 # Lambda
 
