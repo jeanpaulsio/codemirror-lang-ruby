@@ -4,3 +4,5 @@ export declare const Heredoc: number
 export declare const lessThanOp: number
 export declare const lessThanEqOp: number
 export declare const inheritsOp: number
+export declare const PercentStringLiteral: number
+export declare const moduloOp: number

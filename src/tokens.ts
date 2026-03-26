@@ -2,6 +2,7 @@ import {ExternalTokenizer} from "@lezer/lr"
 import {
   Regex, divideOp,
   Heredoc, lessThanOp, lessThanEqOp, inheritsOp,
+  PercentStringLiteral, moduloOp,
 } from "./syntax.grammar.terms"
 
 // ============================================================
@@ -173,6 +174,88 @@ function tryMatchHeredoc(input: {peek(offset: number): number}): number {
     if (ch === 10) pos++
     else if (ch === 13) { pos++; if (input.peek(pos) === 10) pos++ }
   }
+}
+
+// ============================================================
+// Percent literal external tokenizer (#11)
+//
+// Matches %w[], %i[], %q(), %Q(), %r(), %x(), %s(), %(), and
+// any single-character delimiter: %w|a b|, %q!hello!, etc.
+//
+// Bracket delimiters ([], (), {}, <>) are paired — the tokenizer
+// tracks nesting depth. Non-bracket delimiters use the same
+// character for open and close.
+// ============================================================
+
+const BRACKET_PAIRS: Record<number, number> = {
+  91: 93,   // [ → ]
+  40: 41,   // ( → )
+  123: 125, // { → }
+  60: 62,   // < → >
+}
+
+export const percentLiteralTokenizer = new ExternalTokenizer((input, stack) => {
+  if (input.next !== 37 /* '%' */) return
+
+  // Try to match a percent literal
+  const literalLen = tryMatchPercentLiteral(input)
+  if (literalLen > 0 && stack.canShift(PercentStringLiteral)) {
+    input.acceptToken(PercentStringLiteral, literalLen)
+    return
+  }
+
+  // Fall back to modulo operator
+  if (stack.canShift(moduloOp)) {
+    input.acceptToken(moduloOp, 1)
+  }
+})
+
+function tryMatchPercentLiteral(input: {peek(offset: number): number}): number {
+  let pos = 1
+  const modifier = input.peek(pos)
+
+  // Optional type modifier: w W i I q Q r x s
+  if (modifier >= 65 && modifier <= 90 || modifier >= 97 && modifier <= 122) {
+    const valid = [119, 87, 105, 73, 113, 81, 114, 120, 115] // w W i I q Q r x s
+    if (valid.indexOf(modifier) === -1) return 0
+    pos++
+  }
+
+  // Read the delimiter character
+  const openDelim = input.peek(pos)
+  // Reject whitespace, EOF, and alphanumeric characters as delimiters.
+  // Digits would cause %3 or %300 to be misread as percent literals.
+  if (openDelim === -1 || openDelim === 32 || openDelim === 9 ||
+      openDelim === 10 || openDelim === 13 ||
+      (openDelim >= 48 && openDelim <= 57) ||   // 0-9
+      (openDelim >= 65 && openDelim <= 90) ||    // A-Z
+      (openDelim >= 97 && openDelim <= 122)) return 0  // a-z
+
+  // Don't match %letter that isn't followed by a delimiter (e.g. % in arithmetic)
+  pos++
+  const closeDelim = BRACKET_PAIRS[openDelim] || openDelim
+
+  if (BRACKET_PAIRS[openDelim]) {
+    let depth = 1
+    while (depth > 0) {
+      const ch = input.peek(pos)
+      if (ch === -1) return pos // unterminated
+      if (ch === 92 /* \\ */) { pos += 2; continue }
+      if (ch === openDelim) depth++
+      if (ch === closeDelim) depth--
+      pos++
+    }
+  } else {
+    while (true) {
+      const ch = input.peek(pos)
+      if (ch === -1) return pos // unterminated
+      if (ch === 92 /* \\ */) { pos += 2; continue }
+      if (ch === closeDelim) { pos++; break }
+      pos++
+    }
+  }
+
+  return pos
 }
 
 function isIdentStart(ch: number): boolean {

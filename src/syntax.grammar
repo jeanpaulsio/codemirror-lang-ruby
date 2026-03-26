@@ -238,6 +238,7 @@ Arg {
 BinaryExpression {
   expression !add ArithOp expression |
   expression !add "-" expression |
+  expression !mul moduloOp expression |
   expression !mul divideOp expression |
   expression !mul "*" expression |
   expression !exp "**" expression |
@@ -364,18 +365,13 @@ semi { ";" | newline }
   Symbol { ":" $[a-zA-Z_] $[a-zA-Z0-9_]* }
   CharacterLiteral { "?" ("\\" _ | ![$ \t\n\r]) }
 
-  // %-literals: %w[a b], %i[foo], %q(str), %Q(str), %r(regex), %()
-  // Supports [] () {} <> delimiters. Other delimiters (e.g. %w|a b|) need
-  // an external tokenizer and are deferred.
-  PercentStringLiteral {
-    "%" $[wWiIqQrsx]? "[" (![\\\]] | "\\" _)* "]" |
-    "%" $[wWiIqQrsx]? "(" (![\\)] | "\\" _)* ")" |
-    "%" $[wWiIqQrsx]? "{" (![\\}] | "\\" _)* "}" |
-    "%" $[wWiIqQrsx]? "<" (![\\>] | "\\" _)* ">"
-  }
+  // %-literals are now handled by the external tokenizer to support
+  // all delimiters (not just brackets) and proper content scanning.
   // "/" is NOT in ArithOp — it's handled by the external tokenizer which
   // emits either Regex or divideOp depending on context.
-  ArithOp { "+" | "%" }
+  // "%" is NOT in ArithOp — handled by external tokenizer which emits
+  // either PercentStringLiteral or moduloOp depending on context.
+  ArithOp { "+" }
   // "<" and "<=" are NOT in CompareOp — they're handled by the external
   // tokenizer which also emits heredocStart for <<DELIM.
   CompareOp { "==" | "!=" | ">" | ">=" | "<=>" | "===" }
@@ -396,7 +392,6 @@ semi { ";" | newline }
     Identifier,
     Symbol,
     CharacterLiteral,
-    PercentStringLiteral,
     CompareOp,
     "::",
     "=>",
@@ -416,6 +411,7 @@ semi { ";" | newline }
 // External tokenizers for context-dependent tokens
 // External tokenizers for context-dependent tokens
 @external tokens regexTokenizer from "./tokens" { Regex, divideOp[@name=ArithOp] }
+@external tokens percentLiteralTokenizer from "./tokens" { PercentStringLiteral, moduloOp[@name=ArithOp] }
 @external tokens lessThanTokenizer from "./tokens" {
   Heredoc,
   lessThanOp[@name=CompareOp],
