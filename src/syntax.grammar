@@ -10,23 +10,22 @@
 
 @top Program { statement* }
 
-@skip { whitespace | LineComment | BlockComment }
+// Newlines and semicolons are whitespace — the grammar uses structural
+// delimiters (keywords, braces, parens) to determine statement boundaries.
+@skip { whitespace | semicolonSkip | LineComment | BlockComment }
 
 statement {
-  ExpressionStatement { expression !exprEnd semi? } |
+  ExpressionStatement { expression !exprEnd } |
   MethodDef |
   ClassDef |
   ModuleDef |
-  IfStatement |
-  UnlessStatement |
+  IfStatement ~stmtOrExpr |
+  UnlessStatement ~stmtOrExpr |
   WhileStatement |
   UntilStatement |
   ForStatement |
-  CaseStatement |
-  BeginBlock |
-  ReturnStatement |
-  YieldStatement |
-  RaiseStatement |
+  CaseStatement ~stmtOrExpr |
+  BeginBlock ~stmtOrExpr |
   Assignment |
   MultipleAssignment |
   BareMethodCall
@@ -45,8 +44,17 @@ BareMethodCall {
    bareMethod<"module_function"> |
    bareMethod<"alias"> | bareMethod<"alias_method"> |
    bareMethod<"using"> |
-   bareMethod<"throw"> | bareMethod<"catch">)
-  commaSep1<expression> semi?
+   bareMethod<"throw"> | bareMethod<"catch"> |
+   bareMethod<"gem"> | bareMethod<"source"> | bareMethod<"group"> |
+   bareMethod<"validates"> | bareMethod<"validate"> |
+   bareMethod<"has_many"> | bareMethod<"has_one"> | bareMethod<"belongs_to"> |
+   bareMethod<"before_action"> | bareMethod<"after_action"> | bareMethod<"around_action"> |
+   bareMethod<"before_create"> | bareMethod<"before_save"> | bareMethod<"after_create"> | bareMethod<"after_save"> |
+   bareMethod<"render"> | bareMethod<"redirect_to"> |
+   bareMethod<"delegate"> | bareMethod<"scope"> | bareMethod<"enum"> |
+   bareMethod<"task"> | bareMethod<"desc"> | bareMethod<"namespace"> |
+   bareMethod<"raise">)
+  commaSep1<Arg>
 }
 
 // Method definitions:
@@ -55,13 +63,25 @@ BareMethodCall {
 // 3. Endless: def foo(args) = expr (Ruby 3.0+)
 // 4. Setter: def name=(val) ... end
 // 5. self.method: def self.foo(args) ... end
+// 6. Operator: def <=>(other) ... end, def [](i) ... end
 MethodDef {
-  kw<"def"> Identifier ParamList semi? MethodBody kw<"end"> |
-  kw<"def"> Identifier semi MethodBody kw<"end"> |
-  kw<"def"> Identifier ParamList "=" expression semi? |
-  kw<"def"> Identifier "=" ParamList semi? MethodBody kw<"end"> |
-  kw<"def"> kw<"self"> "." Identifier ParamList semi? MethodBody kw<"end"> |
-  kw<"def"> kw<"self"> "." Identifier semi MethodBody kw<"end">
+  kw<"def"> Identifier ~defBody ParamList MethodBody kw<"end"> |
+  kw<"def"> Identifier ~defBody MethodBody kw<"end"> |
+  kw<"def"> Identifier ParamList "=" expression |
+  kw<"def"> Identifier "=" ParamList MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." Identifier ~defBody ParamList MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." Identifier ~defBody MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." Identifier ParamList "=" expression |
+  kw<"def"> OperatorMethodName ParamList MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." OperatorMethodName ParamList MethodBody kw<"end">
+}
+
+// Operator method names: <=>, ==, +, -, *, /, %, **, [], []=, <<, >>, etc.
+OperatorMethodName {
+  CompareOp | greaterThanOp | greaterThanEqOp | lessThanOp | lessThanEqOp |
+  ArithOp | "-" | "*" | "**" | "&" | "|" | "^" | "~" |
+  shiftLeftOp | shiftRightOp |
+  "[]" | "[]="
 }
 
 MethodBody { statement* }
@@ -74,61 +94,67 @@ Param {
   SplatParam |
   DoubleSplatParam |
   BlockParam |
+  KeywordParam |
   DefaultParam |
-  Identifier
+  Identifier ~paramOrExpr
 }
 
 SplatParam { "*" Identifier }
 DoubleSplatParam { "**" Identifier }
-BlockParam { "&" Identifier }
+BlockParam { "&" Identifier ~paramOrExpr }
+// KeywordParam: name: (required keyword) or name: default (keyword with default)
+KeywordParam { Identifier colonOp expression? }
 DefaultParam { Identifier "=" expression }
 
 ClassDef {
-  kw<"class"> Constant (inheritsOp Constant)? semi? ClassBody kw<"end">
+  kw<"class"> className (inheritsOp className)? ClassBody kw<"end">
 }
 
 ClassBody { statement* }
 
 ModuleDef {
-  kw<"module"> Constant semi? ModuleBody kw<"end">
+  kw<"module"> className ModuleBody kw<"end">
 }
+
+// Scoped class/module names: Foo, Foo::Bar, ::TopLevel::Foo
+className { Constant ~rescue ("::" Constant)* }
 
 ModuleBody { statement* }
 
 IfStatement {
-  kw<"if"> expression semi? statement* ElsifClause* ElseClause? kw<"end">
+  kw<"if"> expression statement* ElsifClause* ElseClause? kw<"end">
 }
 
 ElsifClause {
-  kw<"elsif"> expression semi? statement*
+  kw<"elsif"> expression statement*
 }
 
 ElseClause {
-  kw<"else"> semi? statement*
+  kw<"else"> statement*
 }
 
 UnlessStatement {
-  kw<"unless"> expression semi? statement* ElseClause? kw<"end">
+  kw<"unless"> expression statement* ElseClause? kw<"end">
 }
 
 WhileStatement {
-  kw<"while"> expression semi? statement* kw<"end">
+  kw<"while"> expression !loopBody doKw? statement* kw<"end">
 }
 
 UntilStatement {
-  kw<"until"> expression semi? statement* kw<"end">
+  kw<"until"> expression !loopBody doKw? statement* kw<"end">
 }
 
 ForStatement {
-  kw<"for"> Identifier kw<"in"> expression semi? statement* kw<"end">
+  kw<"for"> Identifier kw<"in"> expression !loopBody doKw? statement* kw<"end">
 }
 
 CaseStatement {
-  kw<"case"> expression? semi? (WhenClause* | InClause*) ElseClause? kw<"end">
+  kw<"case"> expression? (WhenClause* | InClause*) ElseClause? kw<"end">
 }
 
 WhenClause {
-  kw<"when"> commaSep1<expression> semi? statement*
+  kw<"when"> commaSep1<expression> statement*
 }
 
 // Pattern matching (Ruby 3.0+)
@@ -137,41 +163,39 @@ WhenClause {
 // Guard clauses (in pattern if condition) are deferred — the if/unless
 // keyword conflicts with IfStatement/UnlessStatement in the LR parser.
 InClause {
-  kw<"in"> (PinExpression | expression) semi? statement*
+  kw<"in"> (PinExpression | expression) statement*
 }
 
 // Pin operator — scoped to InClause only, since ^ is bitwise XOR elsewhere
 PinExpression { "^" expression }
 
 BeginBlock {
-  kw<"begin"> semi? statement* RescueClause* ElseClause? EnsureClause? kw<"end">
+  kw<"begin"> statement* RescueClause* ElseClause? EnsureClause? kw<"end">
 }
 
 RescueClause {
-  kw<"rescue"> ExceptionList? semi? statement*
+  kw<"rescue"> ExceptionList? statement*
 }
 
+// ExceptionList: rescue StandardError => e, rescue => e (bare), rescue StandardError, RuntimeError => e
 ExceptionList {
-  Constant ~rescue ("," Constant)* ("=>" Identifier)?
+  Constant ~rescue ("," Constant)* ("=>" Identifier)? |
+  "=>" Identifier
 }
 
 EnsureClause {
-  kw<"ensure"> semi? statement*
+  kw<"ensure"> statement*
 }
-
-ReturnStatement { kw<"return"> expression? semi }
-YieldStatement { kw<"yield"> expression? semi }
-RaiseStatement { kw<"raise"> expression? semi }
 
 Assignment {
   (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
-  AssignOp expression semi? |
-  SubscriptExpression AssignOp expression semi?
+  AssignOp expression |
+  SubscriptExpression AssignOp expression
 }
 
 // Multiple assignment: a, b = 1, 2 or a, *b = [1, 2, 3]
 MultipleAssignment {
-  AssignmentTarget ("," AssignmentTarget)+ "=" expression ("," expression)* semi?
+  AssignmentTarget ("," AssignmentTarget)+ "=" expression ("," expression)*
 }
 
 AssignmentTarget {
@@ -180,7 +204,7 @@ AssignmentTarget {
 }
 
 expression {
-  Identifier |
+  Identifier ~paramOrExpr |
   InstanceVariable |
   ClassVariable |
   GlobalVariable |
@@ -200,6 +224,13 @@ expression {
   kw<"true"> |
   kw<"false"> |
   kw<"self"> |
+  kw<"return"> |
+  kw<"yield"> |
+  kw<"super"> |
+  IfStatement ~stmtOrExpr |
+  UnlessStatement ~stmtOrExpr |
+  CaseStatement ~stmtOrExpr |
+  BeginBlock ~stmtOrExpr |
   MethodCall |
   BinaryExpression |
   UnaryExpression |
@@ -223,6 +254,11 @@ BlockCall { expression !blockCall (Block | DoBlock) }
 // MethodCall requires either a receiver (expr.method) or args (method(args)).
 // A bare identifier without receiver or args is just an Identifier, not a MethodCall.
 // Supports regular dot (.), safe navigation (&.), and scope resolution (::).
+// MethodCall requires either a receiver (expr.method) or args (method(args)).
+// Supports regular dot (.), safe navigation (&.), and scope resolution (::).
+// NOTE: For receiver-style calls (expr.method(args)), the LR parser treats
+// `(args)` as a separate ParenExpression. This is visually identical for
+// highlighting. Unary `&` in UnaryExpression handles `obj.method(&block)`.
 MethodCall {
   expression !member "." Identifier ArgList? |
   expression !member "&." Identifier ArgList? |
@@ -247,6 +283,7 @@ Arg {
   SplatArg { "*" expression } |
   DoubleSplatArg { "**" expression } |
   BlockArg { "&" expression } |
+  KeywordArg { Identifier colonOp expression } |
   expression
 }
 
@@ -257,34 +294,51 @@ BinaryExpression {
   expression !mul divideOp expression |
   expression !mul "*" expression |
   expression !exp "**" expression |
+  expression !shift shiftLeftOp expression |
+  expression !shift shiftRightOp expression |
+  expression !bitand "&" expression |
+  expression !bitor "|" expression |
+  expression !bitor "^" expression |
   expression !compare CompareOp expression |
   expression !compare lessThanOp expression |
   expression !compare lessThanEqOp expression |
+  expression !compare greaterThanOp expression |
+  expression !compare greaterThanEqOp expression |
   expression !logic LogicOp expression |
   expression !logic kw<"and"> expression |
   expression !logic kw<"or"> expression
 }
 
 UnaryExpression {
-  ("!" | kw<"not"> | "-") !unary expression
+  ("!" | kw<"not"> | "-" | ArithOp | "~") !unary expression
 }
 
-ParenExpression { "(" expression ")" }
+// ParenExpression allows comma-separated expressions and `&expr` for block-pass
+// in receiver-style calls where the LR parser treats `obj.method(args)` as
+// MethodCall + ParenExpression.
+ParenExpression { "(" (BlockPassExpression | expression ("," expression)* ","?) ")" }
+BlockPassExpression { "&" expression }
 
 Block {
   ~blockOrHash "{" BlockParams? statement* "}" ~blockOrHash
 }
 
 DoBlock {
-  kw<"do"> BlockParams? semi? statement* kw<"end">
+  doKw BlockParams? statement* kw<"end">
 }
+
+// "do" uses @extend (not @specialize via kw<>) so that both the Identifier base
+// token and the doKw extended token are available to the parser. This allows the
+// parser to see doKw actions in WhileStatement/UntilStatement contexts (loop
+// separator) alongside DoBlock contexts (block start).
+doKw[@name=do] { @extend<Identifier, "do"> }
 
 BlockParams {
   "|" commaSep<Identifier> "|"
 }
 
 Lambda {
-  "->" ParamList? (Block | DoBlock)
+  "->" ParamList (Block | DoBlock)
 }
 
 Range {
@@ -328,7 +382,7 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
 // heredocs is not yet supported (would need @local tokens + ContextTracker).
 
 Array { "[" commaSep<expression> "]" }
-Hash { ~blockOrHash "{" (HashPair ("," HashPair)*)? "}" ~blockOrHash }
+Hash { ~blockOrHash "{" (HashPair ("," HashPair)* ","?)? "}" ~blockOrHash }
 HashPair { expression "=>" expression | Identifier colonOp expression }
 
 @precedence {
@@ -338,26 +392,30 @@ HashPair { expression "=>" expression | Identifier colonOp expression }
   exp @right,
   mul @left,
   add @left,
+  shift @left,
+  bitand @left,
+  bitor @left,
   range @right,
   compare @left,
   logic @left,
   ternary @right,
   modifier @right,
+  loopBody @right,
   blockCall @right,
   exprEnd
 }
 
-commaSep<expr> { (expr ("," expr)*)? }
+// Trailing comma only in commaSep (delimited by ] ) }) — not in commaSep1
+// (used by BareMethodCall where there's no closing delimiter).
+commaSep<expr> { (expr ("," expr)* ","?)? }
 commaSep1<expr> { expr ("," expr)* }
 
 kw<term> { @specialize[@name={term}]<Identifier, term> }
 bareMethod<term> { @extend[@name={term}]<Identifier, term> }
 
-semi { ";" | newline }
-
 @tokens {
-  whitespace { $[ \t]+ }
-  newline { $[\n\r] }
+  whitespace { $[ \t\n\r]+ }
+  semicolonSkip { ";" }
 
   LineComment { "#" ![\n\r]* }
   BlockComment { "=begin" ![]*  "=end" }
@@ -365,7 +423,8 @@ semi { ";" | newline }
   Identifier { $[a-z_] $[a-zA-Z0-9_]* ("?" | "!")? }
   InstanceVariable { "@" $[a-zA-Z_] $[a-zA-Z0-9_]* }
   ClassVariable { "@@" $[a-zA-Z_] $[a-zA-Z0-9_]* }
-  GlobalVariable { "$" $[a-zA-Z0-9_]+ }
+  // Includes special globals like $!, $~, $&, $;, $,, $0, $LOAD_PATH
+  GlobalVariable { "$" ($[a-zA-Z0-9_]+ | $[!~&`;,./\\?<>*$@:]) }
   Constant { $[A-Z] $[a-zA-Z0-9_]* }
 
   Integer { $[0-9]+ ("_" $[0-9]+)* }
@@ -388,13 +447,15 @@ semi { ";" | newline }
   ArithOp { "+" }
   // "<" and "<=" are NOT in CompareOp — they're handled by the external
   // tokenizer which also emits heredocStart for <<DELIM.
-  CompareOp { "==" | "!=" | ">" | ">=" | "<=>" | "===" }
-  AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
+  // ">" and ">=" are NOT in CompareOp — handled by greaterThanTokenizer
+  // which also emits ">>" (shift) and ">>=" (assignment).
+  CompareOp { "==" | "!=" | "<=>" | "===" | "=~" | "!~" }
+  AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "||=" | "&&=" | "<<=" | ">>=" | "|=" | "&=" | "^=" }
   LogicOp { "&&" | "||" }
 
   // ":" is NOT in punctuation — handled by symbolTokenizer which emits
   // either Symbol (:foo) or colonOp (for ternary : and hash shorthand key:)
-  "(" ")" "[" "]" "{" "}" "." "&." "::" "," ";" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
+  "(" ")" "[" "]" "{" "}" "." "&." "::" "," "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**" "~" "[]" "[]="
 
   @precedence {
     BlockComment,
@@ -411,8 +472,11 @@ semi { ";" | newline }
     "::",
     "=>",
     "->",
-    ArithOp,
     AssignOp,
+    ArithOp,
+    "~",
+    "[]=",
+    "[]",
     "...",
     "..",
     "&.",
@@ -424,7 +488,6 @@ semi { ";" | newline }
 }
 
 // External tokenizers for context-dependent tokens
-// External tokenizers for context-dependent tokens
 @external tokens regexTokenizer from "./tokens" { Regex, divideOp[@name=ArithOp] }
 @external tokens percentLiteralTokenizer from "./tokens" { PercentStringLiteral, moduloOp[@name=ArithOp] }
 @external tokens symbolTokenizer from "./tokens" { Symbol, colonOp }
@@ -432,7 +495,12 @@ semi { ";" | newline }
   Heredoc,
   lessThanOp[@name=CompareOp],
   lessThanEqOp[@name=CompareOp],
-  inheritsOp
+  inheritsOp,
+  shiftLeftOp
 }
-
+@external tokens greaterThanTokenizer from "./tokens" {
+  greaterThanOp[@name=CompareOp],
+  greaterThanEqOp[@name=CompareOp],
+  shiftRightOp
+}
 @detectDelim

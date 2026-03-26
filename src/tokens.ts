@@ -1,7 +1,8 @@
 import {ExternalTokenizer} from "@lezer/lr"
 import {
   Regex, divideOp,
-  Heredoc, lessThanOp, lessThanEqOp, inheritsOp,
+  Heredoc, lessThanOp, lessThanEqOp, inheritsOp, shiftLeftOp,
+  greaterThanOp, greaterThanEqOp, shiftRightOp,
   PercentStringLiteral, moduloOp,
   Symbol as SymbolToken, colonOp,
 } from "./syntax.grammar.terms"
@@ -71,10 +72,17 @@ export const lessThanTokenizer = new ExternalTokenizer((input, stack) => {
   const second = input.peek(1)
 
   // Try heredoc: <<
-  if (second === 60 /* '<' */ && stack.canShift(Heredoc)) {
-    const heredocLen = tryMatchHeredoc(input)
-    if (heredocLen > 0) {
-      input.acceptToken(Heredoc, heredocLen)
+  if (second === 60 /* '<' */) {
+    if (stack.canShift(Heredoc)) {
+      const heredocLen = tryMatchHeredoc(input)
+      if (heredocLen > 0) {
+        input.acceptToken(Heredoc, heredocLen)
+        return
+      }
+    }
+    // << as left shift operator
+    if (stack.canShift(shiftLeftOp)) {
+      input.acceptToken(shiftLeftOp, 2)
       return
     }
   }
@@ -282,13 +290,48 @@ function tryMatchPercentLiteral(input: {peek(offset: number): number}): number {
 export const symbolTokenizer = new ExternalTokenizer((input, stack) => {
   if (input.next !== 58 /* ':' */) return
 
-  // :identifier → Symbol (if parser expects it)
   const next = input.peek(1)
-  if (isIdentStart(next)) {
+
+  // :identifier, :identifier?, :identifier! → Symbol
+  if (isIdentStart(next) || (next >= 65 && next <= 90) /* A-Z */) {
     let pos = 2
     while (isIdentChar(input.peek(pos))) pos++
+    // Allow ? or ! suffix
+    const suffix = input.peek(pos)
+    if (suffix === 63 /* ? */ || suffix === 33 /* ! */) pos++
     if (stack.canShift(SymbolToken)) {
       input.acceptToken(SymbolToken, pos)
+      return
+    }
+  }
+
+  // :"..." or :'...' → quoted Symbol
+  if (next === 34 /* " */ || next === 39 /* ' */) {
+    let pos = 2
+    const quote = next
+    while (true) {
+      const ch = input.peek(pos)
+      if (ch === -1 || ch === 10 || ch === 13) break // unterminated
+      if (ch === 92 /* \\ */) { pos += 2; continue } // escape
+      if (ch === quote) { pos++; break }
+      pos++
+    }
+    if (stack.canShift(SymbolToken)) {
+      input.acceptToken(SymbolToken, pos)
+      return
+    }
+  }
+
+  // Operator symbols: :==, :!=, :<=>, :===, :=~, :!~, :+, :-, :*, :/, :%,
+  // :**,  :<<, :>>, :[], :[]=, :<, :<=, :>, :>=, :&, :|, :^, :~, :+@, :-@
+  if (next === 61 /* = */ || next === 33 /* ! */ || next === 60 /* < */ ||
+      next === 62 /* > */ || next === 43 /* + */ || next === 45 /* - */ ||
+      next === 42 /* * */ || next === 47 /* / */ || next === 37 /* % */ ||
+      next === 38 /* & */ || next === 124 /* | */ || next === 94 /* ^ */ ||
+      next === 126 /* ~ */ || next === 91 /* [ */) {
+    const len = tryMatchOperatorSymbol(input)
+    if (len > 0 && stack.canShift(SymbolToken)) {
+      input.acceptToken(SymbolToken, len)
       return
     }
   }
@@ -296,6 +339,78 @@ export const symbolTokenizer = new ExternalTokenizer((input, stack) => {
   // Fall back to plain colon (ternary, hash shorthand)
   if (stack.canShift(colonOp)) {
     input.acceptToken(colonOp, 1)
+  }
+})
+
+// Try to match an operator after ":" for operator symbols.
+// Returns total length including the ":" prefix, or 0.
+function tryMatchOperatorSymbol(input: {peek(offset: number): number}): number {
+  const c1 = input.peek(1)
+  const c2 = input.peek(2)
+  const c3 = input.peek(3)
+
+  // Three-char operators: ===, <=>, ==~, !~=
+  if (c1 === 61 && c2 === 61 && c3 === 61) return 4 // :===
+  if (c1 === 60 && c2 === 61 && c3 === 62) return 4 // :<=>
+
+  // :[] and :[]=
+  if (c1 === 91 && c2 === 93) {
+    if (c3 === 61) return 4 // :[]=
+    return 3 // :[]
+  }
+
+  // Two-char operators: ==, !=, =~, !~, <=, >=, <<, >>, **, +@, -@
+  if (c1 === 61 && c2 === 61) return 3 // :==
+  if (c1 === 33 && c2 === 126) return 3 // :!~
+  if (c1 === 61 && c2 === 126) return 3 // :=~
+  if (c1 === 33 && c2 === 61) return 3 // :!=
+  if (c1 === 60 && c2 === 61) return 3 // :<=
+  if (c1 === 62 && c2 === 61) return 3 // :>=
+  if (c1 === 60 && c2 === 60) return 3 // :<<
+  if (c1 === 62 && c2 === 62) return 3 // :>>
+  if (c1 === 42 && c2 === 42) return 3 // :**
+  if (c1 === 43 && c2 === 64) return 3 // :+@
+  if (c1 === 45 && c2 === 64) return 3 // :-@
+
+  // Single-char operators: +, -, *, /, %, <, >, &, |, ^, ~
+  if (c1 === 43 || c1 === 45 || c1 === 42 || c1 === 47 || c1 === 37 ||
+      c1 === 60 || c1 === 62 || c1 === 38 || c1 === 124 || c1 === 94 ||
+      c1 === 126) return 2
+
+  return 0
+}
+
+// ============================================================
+// Greater-than external tokenizer
+//
+// `>` is ambiguous: `>`, `>=`, `>>` (right shift), `>>=` (assign).
+// Longest match determines: >>= (3) > >> or >= (2) > > (1).
+// ============================================================
+
+export const greaterThanTokenizer = new ExternalTokenizer((input, stack) => {
+  if (input.next !== 62 /* '>' */) return
+
+  const second = input.peek(1)
+
+  // >> (right shift) — >>= is handled by inline AssignOp token
+  if (second === 62 /* '>' */) {
+    if (stack.canShift(shiftRightOp)) {
+      input.acceptToken(shiftRightOp, 2)
+      return
+    }
+  }
+
+  // >=
+  if (second === 61 /* '=' */) {
+    if (stack.canShift(greaterThanEqOp)) {
+      input.acceptToken(greaterThanEqOp, 2)
+      return
+    }
+  }
+
+  // Plain >
+  if (stack.canShift(greaterThanOp)) {
+    input.acceptToken(greaterThanOp, 1)
   }
 })
 
