@@ -165,3 +165,33 @@ x + /test/
 ==>
 
 Program(ExpressionStatement(BinaryExpression(Identifier, ArithOp, Regex)))
+
+# Heredoc
+
+<<~SQL
+  SELECT * FROM users
+SQL
+
+==>
+
+Program(ExpressionStatement(Heredoc))
+
+# Heredoc with assignment
+
+x = <<~HTML
+  <div>hello</div>
+HTML
+
+==>
+
+Program(Assignment(Identifier, AssignOp, Heredoc))
+
+# Heredoc strict (no indent modifier)
+
+<<RUBY
+hello
+RUBY
+
+==>
+
+Program(ExpressionStatement(Heredoc))
