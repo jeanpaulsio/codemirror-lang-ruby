@@ -227,3 +227,31 @@ end
 ==>
 
 Program(MethodDef(def, self, ".", Identifier, MethodBody(ExpressionStatement(ParenExpression("(", Identifier, ")")), ExpressionStatement(Identifier)), end))
+
+# Bare rescue in method body
+
+def foo
+  risky
+rescue => e
+  fallback
+end
+
+==>
+
+Program(MethodDef(def, Identifier, MethodBody(ExpressionStatement(Identifier), RescueClause(rescue, ExceptionList("=>", Identifier), ExpressionStatement(Identifier))), end))
+
+# Bare method call with lambda argument
+
+scope :active, -> { where(active: true) }
+
+==>
+
+Program(BareMethodCall(scope, Arg(Symbol), ",", Arg(Lambda("->", Block("{", ExpressionStatement(MethodCall(Identifier, ArgList("(", Arg(KeywordArg(Identifier, true)), ")"))), "}")))))
+
+# Lambda without params
+
+-> { 1 }
+
+==>
+
+Program(ExpressionStatement(Lambda("->", Block("{", ExpressionStatement(Integer), "}"))))

@@ -84,7 +84,9 @@ OperatorMethodName {
   "[]" | "[]="
 }
 
-MethodBody { statement* }
+// Method bodies support implicit rescue/ensure (no begin wrapper needed):
+// def foo; risky; rescue => e; fallback; ensure; cleanup; end
+MethodBody { statement* RescueClause* ElseClause? EnsureClause? }
 
 ParamList {
   "(" commaSep<Param> ")"
@@ -338,7 +340,7 @@ BlockParams {
 }
 
 Lambda {
-  "->" ParamList (Block | DoBlock)
+  "->" ParamList? (Block | DoBlock)
 }
 
 Range {
