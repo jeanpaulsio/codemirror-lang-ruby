@@ -25,17 +25,17 @@ new EditorView({
 
 ## Real-world parse accuracy
 
-Tested against popular open source Ruby projects:
+Tested against popular open source Ruby projects (large, representative files):
 
-| Project | Stars | Lines | Accuracy |
-|---------|-------|-------|----------|
-| [Rails](https://github.com/rails/rails) | 56k | 338 | **99.7%** |
-| [Jekyll](https://github.com/jekyll/jekyll) | 49k | 196 | **99.6%** |
-| [Fastlane](https://github.com/fastlane/fastlane) | 40k | 54 | **99.3%** |
-| [Devise](https://github.com/heartcombo/devise) | 24k | 534 | **98.0%** |
-| [Faker](https://github.com/faker-ruby/faker) | 11k | 282 | **97.5%** |
-| [Sidekiq](https://github.com/sidekiq/sidekiq) | 13k | 162 | **97.5%** |
-| [Grape](https://github.com/ruby-grape/grape) | 10k | 75 | **95.3%** |
+| Project | File | Lines | Accuracy |
+|---------|------|-------|----------|
+| [Fastlane](https://github.com/fastlane/fastlane) | runner.rb | 379 | **91.3%** |
+| [Grape](https://github.com/ruby-grape/grape) | api.rb | 166 | **90.1%** |
+| [Jekyll](https://github.com/jekyll/jekyll) | site.rb | 577 | **88.4%** |
+| [Devise](https://github.com/heartcombo/devise) | devise.rb | 534 | **87.9%** |
+| [Sidekiq](https://github.com/sidekiq/sidekiq) | config.rb | 321 | **87.5%** |
+| [Rails](https://github.com/rails/rails) | query_methods.rb | 2291 | **86.6%** |
+| [Faker](https://github.com/faker-ruby/faker) | internet.rb | 579 | **85.3%** |
 
 ## What's supported
 
@@ -54,6 +54,9 @@ Tested against popular open source Ruby projects:
 
 ## Known limitations
 
+- Blank lines inside class/method bodies can produce spurious error nodes (~38% of parse errors)
+- Multi-arg bare method calls (`raise ArgumentError, "msg"`) not fully supported
+- Compound assignment operators (`+=`, `-=`, `|=`) in some contexts
 - Heredoc and `%`-literal bodies are opaque tokens (no interpolation highlighting inside)
 - `<<` left-shift operator not distinguished from heredoc start
 
