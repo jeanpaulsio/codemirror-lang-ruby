@@ -28,7 +28,7 @@ export const rubyHighlighting = styleTags({
   "{ }": t.brace,
   ".": t.derefOperator,
   ", ;": t.separator,
-  ArithOp: t.arithmeticOperator,
+  'ArithOp "-"': t.arithmeticOperator,
   CompareOp: t.compareOperator,
   AssignOp: t.definitionOperator,
   LogicOp: t.logicOperator,

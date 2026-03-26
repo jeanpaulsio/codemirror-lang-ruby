@@ -56,7 +56,7 @@ BlockParam { "&" Identifier }
 DefaultParam { Identifier "=" expression }
 
 ClassDef {
-  kw<"class"> Constant (CompareOp Constant)? semi? ClassBody kw<"end">
+  kw<"class"> Constant ("<" Constant)? semi? ClassBody kw<"end">
 }
 
 ClassBody { statement* }
@@ -159,7 +159,7 @@ expression {
 // A bare identifier without receiver or args is just an Identifier, not a MethodCall.
 // The no-receiver form uses Identifier because at expression-start, the tokenizer
 // produces Identifier (higher precedence). After ".", only Identifier is expected.
-// Block/DoBlock attachment to method calls without parens is a Phase 2 concern
+// Block/DoBlock attachment to method calls is a Phase 3 concern
 // that requires an external tokenizer for proper handling.
 // For now: receiver.method(args) and method(args) work; blocks are standalone.
 MethodCall {
@@ -215,8 +215,7 @@ ConditionalModifier {
 }
 
 Array { "[" commaSep<expression> "]" }
-// Hash requires at least one pair to avoid ambiguity with empty Block {}
-Hash { "{" HashPair ("," HashPair)* "}" }
+Hash { "{" (HashPair ("," HashPair)*)? "}" }
 // TODO: Add symbol-key shorthand (key: value) once we have context-dependent tokenization
 HashPair { expression "=>" expression }
 
