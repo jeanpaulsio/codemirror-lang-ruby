@@ -93,3 +93,47 @@ end
 ==>
 
 Program(CaseStatement(case, Identifier, WhenClause(when, Integer, ExpressionStatement(Identifier)), WhenClause(when, Integer, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+
+# Until loop
+
+until done
+  work
+end
+
+==>
+
+Program(UntilStatement(until, Identifier, ExpressionStatement(Identifier), end))
+
+# For loop
+
+for i in items
+  puts(i)
+end
+
+==>
+
+Program(ForStatement(for, Identifier, in, Identifier, ExpressionStatement(MethodCall(Identifier, ArgList(Identifier))), end))
+
+# Begin/rescue/ensure
+
+begin
+  x
+rescue StandardError => e
+  y
+ensure
+  z
+end
+
+==>
+
+Program(BeginBlock(begin, ExpressionStatement(Identifier), RescueClause(rescue, ExceptionList(Constant, Identifier), ExpressionStatement(Identifier)), EnsureClause(ensure, ExpressionStatement(Identifier)), end))
+
+# Return statement
+
+def foo
+  return x
+end
+
+==>
+
+Program(MethodDef(def, Identifier, MethodBody(ReturnStatement(return, Identifier)), end))

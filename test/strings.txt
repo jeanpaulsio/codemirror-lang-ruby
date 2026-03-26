@@ -1,0 +1,95 @@
+# Simple interpolation
+
+"hello #{name}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Interpolation with surrounding text
+
+"hello #{name}!"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, Identifier, InterpolationEnd), StringContent)))
+
+# Expression in interpolation
+
+"result: #{1 + 2}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, BinaryExpression(Integer, ArithOp, Integer), InterpolationEnd))))
+
+# Multiple interpolations
+
+"#{a} and #{b}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(Interpolation(InterpolationStart, Identifier, InterpolationEnd), StringContent, Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Method call in interpolation
+
+"hello #{name.upcase}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, MethodCall(Identifier, Identifier), InterpolationEnd))))
+
+# Escape sequence in double-quoted string
+
+"hello\nworld"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, StringEscape, StringContent)))
+
+# Escaped hash prevents interpolation
+
+"price is \#{100}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, StringEscape, StringContent)))
+
+# Pure interpolation (no surrounding text)
+
+"#{x}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Adjacent interpolations
+
+"#{a}#{b}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(Interpolation(InterpolationStart, Identifier, InterpolationEnd), Interpolation(InterpolationStart, Identifier, InterpolationEnd))))
+
+# Nested string inside interpolation
+
+"hello #{"world"}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, InterpolatedString(StringContent), InterpolationEnd))))
+
+# Operator precedence inside interpolation
+
+"result #{a + b * c}"
+
+==>
+
+Program(ExpressionStatement(InterpolatedString(StringContent, Interpolation(InterpolationStart, BinaryExpression(BinaryExpression(Identifier, ArithOp, Identifier), ArithOp, Identifier), InterpolationEnd))))
+
+# Single-quoted string has no interpolation
+
+'hello #{not interpolated}'
+
+==>
+
+Program(ExpressionStatement(SingleQuotedString))
