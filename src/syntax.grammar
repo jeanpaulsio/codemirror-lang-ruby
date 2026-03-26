@@ -27,13 +27,15 @@ statement {
   ReturnStatement |
   YieldStatement |
   RaiseStatement |
-  Assignment
+  Assignment |
+  MultipleAssignment
 }
 
-// Two forms: with explicit parens for params, or without (requires semi/newline)
+// Three forms: with parens, without parens, and endless (Ruby 3.0+)
 MethodDef {
   kw<"def"> Identifier ParamList semi? MethodBody kw<"end"> |
-  kw<"def"> Identifier semi MethodBody kw<"end">
+  kw<"def"> Identifier semi MethodBody kw<"end"> |
+  kw<"def"> Identifier ParamList "=" expression semi?
 }
 
 MethodBody { statement* }
@@ -96,12 +98,24 @@ ForStatement {
 }
 
 CaseStatement {
-  kw<"case"> expression? semi? WhenClause* ElseClause? kw<"end">
+  kw<"case"> expression? semi? (WhenClause* | InClause*) ElseClause? kw<"end">
 }
 
 WhenClause {
   kw<"when"> commaSep1<expression> semi? statement*
 }
+
+// Pattern matching (Ruby 3.0+)
+// Patterns reuse expression since they highlight identically. The pin operator
+// (^variable) is the only pattern-specific construct.
+// Guard clauses (in pattern if condition) are deferred — the if/unless
+// keyword conflicts with IfStatement/UnlessStatement in the LR parser.
+InClause {
+  kw<"in"> (PinExpression | expression) semi? statement*
+}
+
+// Pin operator — scoped to InClause only, since ^ is bitwise XOR elsewhere
+PinExpression { "^" expression }
 
 BeginBlock {
   kw<"begin"> semi? statement* RescueClause* ElseClause? EnsureClause? kw<"end">
@@ -126,6 +140,16 @@ RaiseStatement { kw<"raise"> expression? semi }
 Assignment {
   (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
   AssignOp expression semi?
+}
+
+// Multiple assignment: a, b = 1, 2 or a, *b = [1, 2, 3]
+MultipleAssignment {
+  AssignmentTarget ("," AssignmentTarget)+ "=" expression ("," expression)* semi?
+}
+
+AssignmentTarget {
+  "*" Identifier |
+  Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant ~rescue
 }
 
 expression {
@@ -311,7 +335,7 @@ semi { ";" | newline }
   AssignOp { "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "||=" | "&&=" | "<<=" | ">>=" }
   LogicOp { "&&" | "||" }
 
-  "(" ")" "[" "]" "{" "}" "." "&." "," ";" ":" "|" "?" ".." "..." "=>" "->" "&" "*" "**"
+  "(" ")" "[" "]" "{" "}" "." "&." "," ";" ":" "|" "?" "^" ".." "..." "=>" "->" "&" "*" "**"
 
   @precedence {
     BlockComment,

@@ -137,3 +137,53 @@ end
 ==>
 
 Program(MethodDef(def, Identifier, MethodBody(ReturnStatement(return, Identifier)), end))
+
+# Endless method (Ruby 3.0+)
+
+def square(x) = x * x
+
+==>
+
+Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), BinaryExpression(Identifier, Identifier)))
+
+# Multiple assignment
+
+a, b = 1, 2
+
+==>
+
+Program(MultipleAssignment(AssignmentTarget(Identifier), AssignmentTarget(Identifier), Integer, Integer))
+
+# Destructuring with splat
+
+a, *b = 1, 2, 3
+
+==>
+
+Program(MultipleAssignment(AssignmentTarget(Identifier), AssignmentTarget(Identifier), Integer, Integer, Integer))
+
+# Case/in pattern matching
+
+case x
+in 1
+  a
+in [1, 2]
+  b
+else
+  c
+end
+
+==>
+
+Program(CaseStatement(case, Identifier, InClause(in, Integer, ExpressionStatement(Identifier)), InClause(in, Array(Integer, Integer), ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+
+# Pin operator in pattern matching
+
+case x
+in ^y
+  a
+end
+
+==>
+
+Program(CaseStatement(case, Identifier, InClause(in, PinExpression(Identifier), ExpressionStatement(Identifier)), end))
