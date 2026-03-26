@@ -7,7 +7,7 @@ Ruby language support for [CodeMirror 6](https://codemirror.net/), built on a [L
 ## Install
 
 ```bash
-npm install github:jeanpaulsio/codemirror-lang-ruby
+npm install codemirror-lang-ruby
 ```
 
 ## Usage
