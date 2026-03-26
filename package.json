@@ -11,6 +11,8 @@
     "require": "./dist/index.cjs"
   },
   "sideEffects": false,
+  "keywords": ["codemirror", "ruby", "lezer", "syntax", "highlighting", "editor"],
+  "files": ["dist", "src/syntax.grammar"],
   "license": "MIT",
   "repository": {
     "type": "git",
