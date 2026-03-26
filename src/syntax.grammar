@@ -49,11 +49,19 @@ BareMethodCall {
   commaSep1<expression> semi?
 }
 
-// Three forms: with parens, without parens, and endless (Ruby 3.0+)
+// Method definitions:
+// 1. Regular: def foo(args) ... end
+// 2. No parens: def foo ... end
+// 3. Endless: def foo(args) = expr (Ruby 3.0+)
+// 4. Setter: def name=(val) ... end
+// 5. self.method: def self.foo(args) ... end
 MethodDef {
   kw<"def"> Identifier ParamList semi? MethodBody kw<"end"> |
   kw<"def"> Identifier semi MethodBody kw<"end"> |
-  kw<"def"> Identifier ParamList "=" expression semi?
+  kw<"def"> Identifier ParamList "=" expression semi? |
+  kw<"def"> Identifier "=" ParamList semi? MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." Identifier ParamList semi? MethodBody kw<"end"> |
+  kw<"def"> kw<"self"> "." Identifier semi MethodBody kw<"end">
 }
 
 MethodBody { statement* }
@@ -157,7 +165,8 @@ RaiseStatement { kw<"raise"> expression? semi }
 
 Assignment {
   (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
-  AssignOp expression semi?
+  AssignOp expression semi? |
+  SubscriptExpression AssignOp expression semi?
 }
 
 // Multiple assignment: a, b = 1, 2 or a, *b = [1, 2, 3]
@@ -200,6 +209,7 @@ expression {
   TernaryExpression |
   ConditionalModifier |
   ScopeResolution |
+  SubscriptExpression |
   Block |
   DoBlock |
   BlockCall
@@ -222,6 +232,11 @@ MethodCall {
 // Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method
 ScopeResolution {
   expression !member "::" (Constant | Identifier)
+}
+
+// Subscript access: arr[0], hash[:key], matrix[i][j]
+SubscriptExpression {
+  expression !member "[" commaSep<expression> "]"
 }
 
 ArgList {

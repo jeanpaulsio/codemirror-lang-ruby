@@ -130,14 +130,26 @@ function tryMatchHeredoc(input: {peek(offset: number): number}): number {
 
   if (!delimiter) return 0
 
-  // Must be followed by newline (or end of opening line)
-  // Skip to end of opening line
+  // After the delimiter, only whitespace/comments allowed on the rest of the line.
+  // If there's code (like .method or (args)), this is << left-shift, not a heredoc.
   while (true) {
     const ch = input.peek(pos)
-    if (ch === -1) return 0 // no newline after heredoc start
+    if (ch === -1) return 0
     if (ch === 10) { pos++; break }
     if (ch === 13) { pos++; if (input.peek(pos) === 10) pos++; break }
-    pos++
+    if (ch === 32 || ch === 9) { pos++; continue } // whitespace OK
+    if (ch === 35 /* # */) { // comment — skip rest of line
+      while (true) {
+        const c = input.peek(pos)
+        if (c === -1 || c === 10 || c === 13) break
+        pos++
+      }
+      continue
+    }
+    // For bare identifiers (not quoted), any non-whitespace after delimiter
+    // means this is << operator, not heredoc. E.g. <<File.expand_path(...)
+    if (quoteChar !== 39 && quoteChar !== 34 && quoteChar !== 96) return 0
+    pos++ // quoted delimiters can have trailing content (e.g. <<~"SQL", other_arg)
   }
 
   // Scan lines looking for the closing delimiter

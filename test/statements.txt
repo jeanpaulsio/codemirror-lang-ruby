@@ -187,3 +187,23 @@ end
 ==>
 
 Program(CaseStatement(case, Identifier, InClause(in, PinExpression(Identifier), ExpressionStatement(Identifier)), end))
+
+# Setter method definition
+
+def name=(val)
+  @name = val
+end
+
+==>
+
+Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), MethodBody(Assignment(InstanceVariable, AssignOp, Identifier)), end))
+
+# Class method definition
+
+def self.create(args)
+  new
+end
+
+==>
+
+Program(MethodDef(def, self, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(Identifier)), end))
