@@ -47,9 +47,10 @@ export const rubyLanguage = LRLanguage.define({
     props: [
       rubyHighlighting,
       indentNodeProp.add({
-        // Block bodies indent one level
+        // Block bodies indent one level, deindent on end/else/etc.
         "ClassBody ModuleBody MethodBody": context => {
-          return context.baseIndent + context.unit
+          const closing = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/.test(context.textAfter)
+          return context.baseIndent + (closing ? 0 : context.unit)
         },
         // Brace-delimited constructs use delimitedIndent
         Block: delimitedIndent({closing: "}"}),
@@ -57,21 +58,23 @@ export const rubyLanguage = LRLanguage.define({
         Hash: delimitedIndent({closing: "}"}),
         ArgList: delimitedIndent({closing: ")"}),
         ParamList: delimitedIndent({closing: ")"}),
-        // Control flow bodies indent
+        // Control flow bodies indent, deindent on end/else/etc.
         "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement": context => {
-          return context.baseIndent + context.unit
+          const closing = /^\s*(end|else|elsif|when|in)\b/.test(context.textAfter)
+          return context.baseIndent + (closing ? 0 : context.unit)
         },
-        // Begin/rescue/ensure indent
         BeginBlock: context => {
-          return context.baseIndent + context.unit
+          const closing = /^\s*(end|rescue|ensure|else)\b/.test(context.textAfter)
+          return context.baseIndent + (closing ? 0 : context.unit)
         },
-        // Do blocks indent
         DoBlock: context => {
-          return context.baseIndent + context.unit
+          const closing = /^\s*end\b/.test(context.textAfter)
+          return context.baseIndent + (closing ? 0 : context.unit)
         },
-        // Deindent for intermediate keywords
+        // Intermediate keywords stay at parent indent level
         "ElsifClause ElseClause WhenClause InClause RescueClause EnsureClause": context => {
-          return context.baseIndent
+          const closing = /^\s*(end|else|elsif|when|in|rescue|ensure)\b/.test(context.textAfter)
+          return context.baseIndent + (closing ? 0 : context.unit)
         },
       }),
       foldNodeProp.add({
