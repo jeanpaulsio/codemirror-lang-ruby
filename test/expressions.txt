@@ -217,3 +217,27 @@ end
 ==>
 
 Program(ExpressionStatement(BlockCall(MethodCall(Identifier, Identifier), DoBlock(do, BlockParams(Identifier), ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier)))), end))))
+
+# Subscript access
+
+arr[0]
+
+==>
+
+Program(ExpressionStatement(SubscriptExpression(Identifier, Integer)))
+
+# Subscript assignment
+
+arr[0] = 42
+
+==>
+
+Program(Assignment(SubscriptExpression(Identifier, Integer), AssignOp, Integer))
+
+# Chained subscript
+
+matrix[i][j]
+
+==>
+
+Program(ExpressionStatement(SubscriptExpression(SubscriptExpression(Identifier, Identifier), Identifier)))
