@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-03-26
+
+### Added
+
+- **`::TopLevel` leading scope resolution** — `::TopLevel`, `::TopLevel::Foo`, and `::Foo.bar` now parse correctly. Class/module definitions with leading `::` also supported.
+- **Hash patterns in `case/in`** — Pattern matching now supports `in {name: String => n}` and `in {name:}` shorthand via new `HashPattern` rule.
+- **Find patterns in `case/in`** — Pattern matching now supports `in [*, 2, *]` and `in [*pre, value, *post]` via new `FindPattern` rule.
+
+### Fixed
+
+- **Auto-indent on Enter** — The indent service now uses `IndentContext.lineAt()` instead of raw document access, correctly respecting `simulateBreak` for real-time indent-on-Enter behavior.
+- Rails parse accuracy improved from 94.2% to 94.3%.
+
+### Changed
+
+- Known limitations updated: removed fixed items (`::TopLevel`, hash patterns, find patterns), added guard clause limitation explanation.
+
 ## [0.3.0] - 2026-03-26
 
 ### Added

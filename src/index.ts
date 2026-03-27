@@ -73,11 +73,24 @@ function opensBlock(text: string): boolean {
   return (INDENT_AFTER.test(text) || INDENT_ASSIGN.test(text) || INDENT_END.test(text)) && !SINGLE_LINE.test(text)
 }
 
+// Get the text of a line from an IndentContext (respects simulateBreak)
+function lineText(cx: IndentContext, lineFrom: number): string {
+  const line = cx.lineAt(lineFrom)
+  return line.text
+}
+
+// Find the previous line's start position, or -1 if at the first line.
+// Uses cx.lineAt() which respects simulateBreak.
+function prevLineFrom(cx: IndentContext, lineFrom: number): number {
+  if (lineFrom <= 0) return -1
+  const prevLine = cx.lineAt(lineFrom - 1)
+  return prevLine.from
+}
+
 function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
-  const doc = cx.state.doc
-  const line = doc.lineAt(pos)
+  const line = cx.lineAt(pos)
   const text = line.text
-  const lineNum = line.number
+  const lineFrom = line.from
 
   // Current line starts with a deindent keyword → find the right level
   if (DEINDENT_ON.test(text)) {
@@ -85,13 +98,16 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
     // Scan backwards to find the matching opening keyword at the right nesting level
     let depth = 0
     let braceDepth = 0
-    for (let i = lineNum - 1; i >= 1; i--) {
-      const prev = doc.line(i).text
+    let scanFrom = lineFrom
+    while (true) {
+      scanFrom = prevLineFrom(cx, scanFrom)
+      if (scanFrom < 0) break
+      const prev = lineText(cx, scanFrom)
       // Track } closers for brace-style blocks
       if (/^\s*\}/.test(prev)) braceDepth++
       if (/^\s*end\b/.test(prev)) depth++
       else if (INDENT_AFTER.test(prev) || INDENT_ASSIGN.test(prev)) {
-        if (depth === 0) return cx.lineIndent(doc.line(i).from)
+        if (depth === 0) return cx.lineIndent(scanFrom)
         depth--
       } else if (INDENT_END.test(prev)) {
         // Distinguish brace-style ({) from do-style openers
@@ -101,13 +117,13 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
             braceDepth--
           } else if (!isEnd) {
             // Non-end keywords (else, rescue, etc.) can match brace openers
-            if (depth === 0) return cx.lineIndent(doc.line(i).from)
+            if (depth === 0) return cx.lineIndent(scanFrom)
             depth--
           }
           // `end` never closes a `{`, so skip this opener
         } else {
           // do-style opener
-          if (depth === 0) return cx.lineIndent(doc.line(i).from)
+          if (depth === 0) return cx.lineIndent(scanFrom)
           depth--
         }
       }
@@ -120,12 +136,15 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
     const closeChar = text.trim()[0]
     const openChar = closeChar === "}" ? "{" : closeChar === "]" ? "[" : "("
     let depth = 0
-    for (let i = lineNum - 1; i >= 1; i--) {
-      const prev = doc.line(i).text
+    let scanFrom = lineFrom
+    while (true) {
+      scanFrom = prevLineFrom(cx, scanFrom)
+      if (scanFrom < 0) break
+      const prev = lineText(cx, scanFrom)
       for (let j = prev.length - 1; j >= 0; j--) {
         if (prev[j] === closeChar) depth++
         else if (prev[j] === openChar) {
-          if (depth === 0) return cx.lineIndent(doc.line(i).from)
+          if (depth === 0) return cx.lineIndent(scanFrom)
           depth--
         }
       }
@@ -134,15 +153,16 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
   }
 
   // For blank/new lines: determine indent from previous non-blank line
-  if (lineNum > 1) {
+  if (lineFrom > 0) {
     // Find the previous non-blank line
-    let prevNum = lineNum - 1
-    while (prevNum >= 1 && doc.line(prevNum).text.trim() === "") prevNum--
-    if (prevNum < 1) return 0
+    let prevFrom = prevLineFrom(cx, lineFrom)
+    while (prevFrom >= 0 && lineText(cx, prevFrom).trim() === "") {
+      prevFrom = prevLineFrom(cx, prevFrom)
+    }
+    if (prevFrom < 0) return 0
 
-    const prevLine = doc.line(prevNum)
-    const prevText = prevLine.text
-    const prevIndent = cx.lineIndent(prevLine.from)
+    const prevText = lineText(cx, prevFrom)
+    const prevIndent = cx.lineIndent(prevFrom)
 
     // Previous line opens a block → indent
     if (opensBlock(prevText)) {
@@ -172,29 +192,33 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
     // Previous line starts with dot but current doesn't → chain ended, deindent
     if (LEADING_DOT.test(prevText)) {
       // Walk back to find the line that started the chain
-      let chainStart = prevNum
-      while (chainStart > 1) {
-        let checkNum = chainStart - 1
-        while (checkNum >= 1 && doc.line(checkNum).text.trim() === "") checkNum--
-        if (checkNum < 1) break
-        if (LEADING_DOT.test(doc.line(checkNum).text)) {
-          chainStart = checkNum
+      let chainFrom = prevFrom
+      while (true) {
+        let checkFrom = prevLineFrom(cx, chainFrom)
+        while (checkFrom >= 0 && lineText(cx, checkFrom).trim() === "") {
+          checkFrom = prevLineFrom(cx, checkFrom)
+        }
+        if (checkFrom < 0) break
+        if (LEADING_DOT.test(lineText(cx, checkFrom))) {
+          chainFrom = checkFrom
         } else {
-          chainStart = checkNum
+          chainFrom = checkFrom
           break
         }
       }
-      return cx.lineIndent(doc.line(chainStart).from)
+      return cx.lineIndent(chainFrom)
     }
 
     // Previous line ends with continuation (trailing operator, comma, backslash)
     if (CONTINUATION.test(prevText)) {
       // Check if the line before that was also a continuation — if so, stay at same level
-      if (prevNum > 1) {
-        let prev2Num = prevNum - 1
-        while (prev2Num >= 1 && doc.line(prev2Num).text.trim() === "") prev2Num--
-        if (prev2Num >= 1) {
-          const prev2Text = doc.line(prev2Num).text
+      if (prevFrom > 0) {
+        let prev2From = prevLineFrom(cx, prevFrom)
+        while (prev2From >= 0 && lineText(cx, prev2From).trim() === "") {
+          prev2From = prevLineFrom(cx, prev2From)
+        }
+        if (prev2From >= 0) {
+          const prev2Text = lineText(cx, prev2From)
           if (CONTINUATION.test(prev2Text) || LEADING_DOT.test(prev2Text)) {
             return prevIndent
           }
@@ -204,28 +228,32 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
     }
 
     // Previous line is NOT a continuation, but the one before it was → deindent back
-    if (prevNum > 1) {
-      let prev2Num = prevNum - 1
-      while (prev2Num >= 1 && doc.line(prev2Num).text.trim() === "") prev2Num--
-      if (prev2Num >= 1) {
-        const prev2Text = doc.line(prev2Num).text
+    if (prevFrom > 0) {
+      let prev2From = prevLineFrom(cx, prevFrom)
+      while (prev2From >= 0 && lineText(cx, prev2From).trim() === "") {
+        prev2From = prevLineFrom(cx, prev2From)
+      }
+      if (prev2From >= 0) {
+        const prev2Text = lineText(cx, prev2From)
         if ((CONTINUATION.test(prev2Text) || LEADING_DOT.test(prev2Text)) && !opensBlock(prev2Text)) {
           // The continuation chain ended — go back to the original indent level
           // Walk back to find the start of the chain
-          let chainStart = prev2Num
-          while (chainStart > 1) {
-            let checkNum = chainStart - 1
-            while (checkNum >= 1 && doc.line(checkNum).text.trim() === "") checkNum--
-            if (checkNum < 1) break
-            const checkText = doc.line(checkNum).text
+          let chainFrom = prev2From
+          while (true) {
+            let checkFrom = prevLineFrom(cx, chainFrom)
+            while (checkFrom >= 0 && lineText(cx, checkFrom).trim() === "") {
+              checkFrom = prevLineFrom(cx, checkFrom)
+            }
+            if (checkFrom < 0) break
+            const checkText = lineText(cx, checkFrom)
             if (CONTINUATION.test(checkText) || LEADING_DOT.test(checkText)) {
-              chainStart = checkNum
+              chainFrom = checkFrom
             } else {
-              chainStart = checkNum
+              chainFrom = checkFrom
               break
             }
           }
-          return cx.lineIndent(doc.line(chainStart).from)
+          return cx.lineIndent(chainFrom)
         }
       }
     }

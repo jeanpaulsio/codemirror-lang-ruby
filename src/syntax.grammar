@@ -127,7 +127,7 @@ ModuleDef {
 }
 
 // Scoped class/module names: Foo, Foo::Bar, ::TopLevel::Foo
-className { Constant ~rescue ("::" Constant)* }
+className { "::"? Constant ~rescue (~scopeOrClass "::" Constant)* ~scopeOrClass }
 
 ModuleBody { statement* }
 
@@ -174,11 +174,23 @@ WhenClause {
 // keyword conflicts with IfStatement/UnlessStatement in the LR parser.
 // Hash patterns ({name: Type => var}) and find patterns ([*, x, *]) are also deferred.
 InClause {
-  kw<"in"> (PinExpression | PatternBinding | expression) statement*
+  kw<"in"> (PinExpression | HashPattern | FindPattern | PatternBinding | expression) statement*
 }
+
+// Find pattern for pattern matching: [*, value, *], [*pre, value, *post]
+// Must start with * to unambiguously distinguish from regular Array.
+FindPattern { "[" "*" Identifier? ("," findPatternElement)* "]" }
+findPatternElement { "*" Identifier? | expression }
 
 // Pattern binding: match a type and bind to a variable (e.g., Integer => n)
 PatternBinding { expression "=>" Identifier }
+
+// Hash pattern for pattern matching: {name: String => n}, {name:}
+HashPattern { ~blockOrHash "{" (HashPatternPair ("," HashPatternPair)* ","?)? "}" ~blockOrHash }
+HashPatternPair {
+  Identifier colonOp expression ~hashOrPattern ("=>" Identifier)? |
+  Identifier colonOp
+}
 
 // Pin operator — scoped to InClause only, since ^ is bitwise XOR elsewhere
 PinExpression { "^" expression }
@@ -289,9 +301,10 @@ MethodCall {
   Constant !call ArgList
 }
 
-// Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method
+// Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method, ::TopLevel
 ScopeResolution {
-  expression !member "::" (Constant | Identifier)
+  expression !member "::" (Constant | Identifier) |
+  "::" (Constant | Identifier)
 }
 
 // Subscript access: arr[0], hash[:key], matrix[i][j]
@@ -412,7 +425,7 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
 
 Array { "[" commaSep<expression> "]" }
 Hash { ~blockOrHash "{" (HashPair ("," HashPair)* ","?)? "}" ~blockOrHash }
-HashPair { expression "=>" expression | Identifier colonOp expression }
+HashPair { expression "=>" expression | Identifier colonOp expression ~hashOrPattern }
 
 @precedence {
   member @left,
