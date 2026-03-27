@@ -127,7 +127,7 @@ ModuleDef {
 }
 
 // Scoped class/module names: Foo, Foo::Bar, ::TopLevel::Foo
-className { Constant ~rescue ("::" Constant)* }
+className { "::"? Constant ~rescue (~scopeOrClass "::" Constant)* ~scopeOrClass }
 
 ModuleBody { statement* }
 
@@ -289,9 +289,10 @@ MethodCall {
   Constant !call ArgList
 }
 
-// Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method
+// Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method, ::TopLevel
 ScopeResolution {
-  expression !member "::" (Constant | Identifier)
+  expression !member "::" (Constant | Identifier) |
+  "::" (Constant | Identifier)
 }
 
 // Subscript access: arr[0], hash[:key], matrix[i][j]
