@@ -20,7 +20,7 @@ puts("hello")
 
 ==>
 
-Program(BareMethodCall(puts, ParenExpression(InterpolatedString(StringContent))))
+Program(BareMethodCall(puts, Arg(ParenExpression(InterpolatedString(StringContent)))))
 
 # Chained method call
 
@@ -118,7 +118,7 @@ puts(x) if condition
 
 ==>
 
-Program(BareMethodCall(puts, ConditionalModifier(ParenExpression(Identifier), if, Identifier)))
+Program(BareMethodCall(puts, Arg(ConditionalModifier(ParenExpression(Identifier), if, Identifier))))
 
 # Safe navigation operator
 
@@ -166,7 +166,7 @@ puts "hello"
 
 ==>
 
-Program(BareMethodCall(puts, InterpolatedString(StringContent)))
+Program(BareMethodCall(puts, Arg(InterpolatedString(StringContent))))
 
 # Require
 
@@ -174,7 +174,7 @@ require "json"
 
 ==>
 
-Program(BareMethodCall(require, InterpolatedString(StringContent)))
+Program(BareMethodCall(require, Arg(InterpolatedString(StringContent))))
 
 # Attr reader with symbols
 
@@ -182,7 +182,7 @@ attr_reader :name, :email
 
 ==>
 
-Program(BareMethodCall(attr_reader, Symbol, Symbol))
+Program(BareMethodCall(attr_reader, Arg(Symbol), Arg(Symbol)))
 
 # Scope resolution
 

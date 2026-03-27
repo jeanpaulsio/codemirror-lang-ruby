@@ -6,7 +6,7 @@ end
 
 ==>
 
-Program(MethodDef(def, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Identifier))))), end))
+Program(MethodDef(def, Identifier, MethodBody(ExpressionStatement(ParenExpression("(", Identifier, ")")), ExpressionStatement(MethodCall(Identifier, ArgList("(", Arg(Identifier), ")")))), end))
 
 # Class definition
 
@@ -43,7 +43,7 @@ end
 
 ==>
 
-Program(IfStatement(if, Identifier, ExpressionStatement(Identifier), end))
+Program(ExpressionStatement(IfStatement(if, Identifier, ExpressionStatement(Identifier), end)))
 
 # If/elsif/else
 
@@ -57,7 +57,7 @@ end
 
 ==>
 
-Program(IfStatement(if, Identifier, ExpressionStatement(Identifier), ElsifClause(elsif, Identifier, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+Program(ExpressionStatement(IfStatement(if, Identifier, ExpressionStatement(Identifier), ElsifClause(elsif, Identifier, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end)))
 
 # Unless statement
 
@@ -67,7 +67,7 @@ end
 
 ==>
 
-Program(UnlessStatement(unless, Identifier, ExpressionStatement(Identifier), end))
+Program(ExpressionStatement(UnlessStatement(unless, Identifier, ExpressionStatement(Identifier), end)))
 
 # While loop
 
@@ -78,6 +78,16 @@ end
 ==>
 
 Program(WhileStatement(while, Identifier, ExpressionStatement(Identifier), end))
+
+# While loop with do
+
+while running do
+  step
+end
+
+==>
+
+Program(WhileStatement(while, Identifier, do, ExpressionStatement(Identifier), end))
 
 # Case/when
 
@@ -92,7 +102,7 @@ end
 
 ==>
 
-Program(CaseStatement(case, Identifier, WhenClause(when, Integer, ExpressionStatement(Identifier)), WhenClause(when, Integer, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+Program(ExpressionStatement(CaseStatement(case, Identifier, WhenClause(when, Integer, ExpressionStatement(Identifier)), WhenClause(when, Integer, ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end)))
 
 # Until loop
 
@@ -103,6 +113,16 @@ end
 ==>
 
 Program(UntilStatement(until, Identifier, ExpressionStatement(Identifier), end))
+
+# Until loop with do
+
+until done do
+  work
+end
+
+==>
+
+Program(UntilStatement(until, Identifier, do, ExpressionStatement(Identifier), end))
 
 # For loop
 
@@ -126,7 +146,7 @@ end
 
 ==>
 
-Program(BeginBlock(begin, ExpressionStatement(Identifier), RescueClause(rescue, ExceptionList(Constant, Identifier), ExpressionStatement(Identifier)), EnsureClause(ensure, ExpressionStatement(Identifier)), end))
+Program(ExpressionStatement(BeginBlock(begin, ExpressionStatement(Identifier), RescueClause(rescue, ExceptionList(Constant, Identifier), ExpressionStatement(Identifier)), EnsureClause(ensure, ExpressionStatement(Identifier)), end)))
 
 # Return statement
 
@@ -136,7 +156,7 @@ end
 
 ==>
 
-Program(MethodDef(def, Identifier, MethodBody(ReturnStatement(return, Identifier)), end))
+Program(MethodDef(def, Identifier, MethodBody(ExpressionStatement(return), ExpressionStatement(Identifier)), end))
 
 # Endless method (Ruby 3.0+)
 
@@ -175,7 +195,7 @@ end
 
 ==>
 
-Program(CaseStatement(case, Identifier, InClause(in, Integer, ExpressionStatement(Identifier)), InClause(in, Array(Integer, Integer), ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end))
+Program(ExpressionStatement(CaseStatement(case, Identifier, InClause(in, Integer, ExpressionStatement(Identifier)), InClause(in, Array(Integer, Integer), ExpressionStatement(Identifier)), ElseClause(else, ExpressionStatement(Identifier)), end)))
 
 # Pin operator in pattern matching
 
@@ -186,7 +206,7 @@ end
 
 ==>
 
-Program(CaseStatement(case, Identifier, InClause(in, PinExpression(Identifier), ExpressionStatement(Identifier)), end))
+Program(ExpressionStatement(CaseStatement(case, Identifier, InClause(in, PinExpression(Identifier), ExpressionStatement(Identifier)), end)))
 
 # Setter method definition
 
@@ -206,4 +226,32 @@ end
 
 ==>
 
-Program(MethodDef(def, self, Identifier, ParamList(Param(Identifier)), MethodBody(ExpressionStatement(Identifier)), end))
+Program(MethodDef(def, self, ".", Identifier, MethodBody(ExpressionStatement(ParenExpression("(", Identifier, ")")), ExpressionStatement(Identifier)), end))
+
+# Bare rescue in method body
+
+def foo
+  risky
+rescue => e
+  fallback
+end
+
+==>
+
+Program(MethodDef(def, Identifier, MethodBody(ExpressionStatement(Identifier), RescueClause(rescue, ExceptionList("=>", Identifier), ExpressionStatement(Identifier))), end))
+
+# Bare method call with lambda argument
+
+scope :active, -> { where(active: true) }
+
+==>
+
+Program(BareMethodCall(scope, Arg(Symbol), ",", Arg(Lambda("->", Block("{", ExpressionStatement(MethodCall(Identifier, ArgList("(", Arg(KeywordArg(Identifier, true)), ")"))), "}")))))
+
+# Lambda without params
+
+-> { 1 }
+
+==>
+
+Program(ExpressionStatement(Lambda("->", Block("{", ExpressionStatement(Integer), "}"))))

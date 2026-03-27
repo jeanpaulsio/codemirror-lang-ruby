@@ -1,0 +1,91 @@
+# Inline rescue in assignment (BUG-007)
+
+value = foo rescue default_val
+
+==>
+
+Program(Assignment(Identifier, AssignOp, InlineRescue(Identifier, rescue, Identifier)))
+
+# Inline rescue with nil (BUG-007)
+
+x = bar rescue nil
+
+==>
+
+Program(Assignment(Identifier, AssignOp, InlineRescue(Identifier, rescue, nil)))
+
+# Scope resolution assignment (BUG-015)
+
+Foo::BAR = 1
+
+==>
+
+Program(Assignment(ScopeResolution(Constant, Constant), AssignOp, Integer))
+
+# Block param destructuring (BUG-019)
+
+foo { |(a, b)| a }
+
+==>
+
+Program(ExpressionStatement(BlockCall(Identifier, Block(BlockParams(DestructuredParam(Identifier, Identifier)), ExpressionStatement(Identifier)))))
+
+# Super with bare args (BUG-021)
+
+super 1, 2
+
+==>
+
+Program(Super(super, Arg(Integer), Arg(Integer)))
+
+# Proc call syntax (BUG-025)
+
+my_proc.(1)
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, ArgList(Arg(Integer)))))
+
+# Lambda without parens (BUG-027)
+
+-> x { x }
+
+==>
+
+Program(ExpressionStatement(Lambda(Identifier, Block(ExpressionStatement(Identifier)))))
+
+# Backslash line continuation (BUG-029)
+
+x = 1 \
+  + 2
+
+==>
+
+Program(Assignment(Identifier, AssignOp, BinaryExpression(Integer, ArithOp, Integer)))
+
+# Pattern binding in case/in (BUG-026)
+
+case x
+in Integer => n
+  n
+end
+
+==>
+
+Program(ExpressionStatement(CaseStatement(case, Identifier, InClause(in, PatternBinding(Constant, Identifier), ExpressionStatement(Identifier)), end)))
+
+# Constant as method call argument
+
+foo(URI(url))
+
+==>
+
+Program(ExpressionStatement(MethodCall(Identifier, ArgList("(", Arg(MethodCall(Constant, ArgList("(", Arg(Identifier), ")"))), ")"))))
+
+# Setter assignment via dot
+
+self.email = value
+
+==>
+
+Program(Assignment(self, ".", Identifier, AssignOp, Identifier))

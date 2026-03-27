@@ -43,7 +43,7 @@ const rubyCompletion = completeFromList([
 
 // Block-opening keyword at line start (or after `=` for assignment forms)
 const INDENT_KEYWORD = /\b(def|class|module|if|unless|while|until|for|case|begin)\b/
-const INDENT_AFTER = /^\s*(def|class|module|if|unless|while|until|for|case|begin)\b/
+const INDENT_AFTER = /^\s*(?:(?:private|protected|public|private_class_method|public_class_method)\s+)?(def|class|module|if|unless|while|until|for|case|begin)\b/
 // Also matches `x = if condition`, `x = begin`, `@foo ||= begin`, etc.
 const INDENT_ASSIGN = /[=]\s*(if|unless|case|begin)\b/
 const INDENT_END = /\b(do)\s*(\|[^|]*\|)?\s*(#.*)?$|\{\s*(\|[^|]*\|)?\s*(#.*)?$/
@@ -64,7 +64,7 @@ const DEINDENT_CLOSE = /^\s*[\}\]\)]/
 const INTERMEDIATE = /^\s*(else|elsif|when|in|rescue|ensure)\b/
 
 // Line ends with a continuation indicator (trailing operator, comma, backslash)
-const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,)\s*(#.*)?$/
+const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#.*)?$/
 
 // Line starts with a dot (method chaining continuation)
 const LEADING_DOT = /^\s*\./
@@ -81,14 +81,35 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
 
   // Current line starts with a deindent keyword → find the right level
   if (DEINDENT_ON.test(text)) {
+    const isEnd = /^\s*end\b/.test(text)
     // Scan backwards to find the matching opening keyword at the right nesting level
     let depth = 0
+    let braceDepth = 0
     for (let i = lineNum - 1; i >= 1; i--) {
       const prev = doc.line(i).text
+      // Track } closers for brace-style blocks
+      if (/^\s*\}/.test(prev)) braceDepth++
       if (/^\s*end\b/.test(prev)) depth++
-      else if (INDENT_AFTER.test(prev) || INDENT_ASSIGN.test(prev) || INDENT_END.test(prev)) {
+      else if (INDENT_AFTER.test(prev) || INDENT_ASSIGN.test(prev)) {
         if (depth === 0) return cx.lineIndent(doc.line(i).from)
         depth--
+      } else if (INDENT_END.test(prev)) {
+        // Distinguish brace-style ({) from do-style openers
+        if (/\{\s*(\|[^|]*\|)?\s*(#.*)?$/.test(prev)) {
+          // Brace-style opener — pair with } closers
+          if (braceDepth > 0) {
+            braceDepth--
+          } else if (!isEnd) {
+            // Non-end keywords (else, rescue, etc.) can match brace openers
+            if (depth === 0) return cx.lineIndent(doc.line(i).from)
+            depth--
+          }
+          // `end` never closes a `{`, so skip this opener
+        } else {
+          // do-style opener
+          if (depth === 0) return cx.lineIndent(doc.line(i).from)
+          depth--
+        }
       }
     }
     return 0
@@ -230,6 +251,13 @@ export const rubyLanguage = LRLanguage.define({
       }),
       foldNodeProp.add({
         "ClassBody ModuleBody MethodBody Block DoBlock BeginBlock": foldInside,
+        "MethodDef ClassDef ModuleDef"(tree, state) {
+          // Fold from end of first line to before `end`
+          const firstLine = state.doc.lineAt(tree.from)
+          const lastLine = state.doc.lineAt(tree.to)
+          if (firstLine.number >= lastLine.number) return null
+          return {from: firstLine.to, to: lastLine.from}
+        },
         "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement"(tree) {
           return {from: tree.from, to: tree.to}
         },
