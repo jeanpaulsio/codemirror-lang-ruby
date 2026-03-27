@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.4] - 2026-03-27
+
+### Fixed
+
+- **npm package missing README** — Added `README.md` and `LICENSE` to the `files` field in `package.json` so they are included in the published tarball.
+
 ## [0.4.3] - 2026-03-27
 
 ### Fixed
