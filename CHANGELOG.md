@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-03-26
+
+### Added
+
+- **575 tests** across 7 suites (up from 105):
+  - 247 indentation tests covering all 32 sections of the indent spec
+  - 139 syntax highlighting tests for all token types
+  - 39 grammar accuracy and performance tests
+  - 25 code folding tests
+  - 20 autocompletion tests (10 with documented skips)
+  - 10 full-file integration tests
+- Parse accuracy benchmark script (`test/benchmark.mjs`)
+
+### Fixed
+
+- **35 grammar bugs identified, 29 fixed** across 8 root causes:
+  - Bare `rescue` inside method body without `begin`
+  - Lambda without params (`-> { body }`)
+  - Setter assignment via dot (`self.email = value`)
+  - Constants as method calls (`URI(url)`, `Integer("42")`)
+  - Scope resolution assignment (`Foo::BAR = 1`)
+  - Block param destructuring (`|(k, v), acc|`)
+  - `super` with bare arguments
+  - Proc call syntax (`proc_var.(args)`)
+  - Backslash line continuation
+  - Pattern binding in `case/in`
+- `private def`, `protected def`, `private_class_method def` now correctly recognized as block openers for indentation
+- Mixed `do/end` + `{}` block nesting no longer confuses the deindent scanner
+- `super` highlighted as keyword
+
+### Changed
+
+- Parse accuracy improved significantly (85-91% → 93-98%) across all benchmark files
+
 ## [0.2.0] - 2026-03-26
 
 ### Added
