@@ -1,6 +1,6 @@
 {
   "name": "codemirror-lang-ruby",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Ruby language support for CodeMirror 6, built on a Lezer grammar",
   "type": "module",
   "main": "dist/index.cjs",

@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-03-26
+
+### Fixed
+
+- **Keyword arguments with receiver** — `obj.foo(a: 1)`, `User.where(active: true)`, `self.foo(kw: 1)` and all receiver-style method calls with keyword args now parse correctly. `ParenExpression` expanded to support keyword args, splats, and block-pass via GLR disambiguation with `ParamList`.
+- **Scoped constants in rescue** — `rescue Foo::Bar => e`, `rescue Foo::Bar, Baz => e`, and `rescue Foo::Bar::Baz => e` now parse correctly. `ExceptionList` accepts scoped constant names.
+
+### Added
+
+- **24 new bare method names** for Rails/Ruby DSLs: `skip_before_action`, `skip_after_action`, `skip_around_action`, `class_methods`, `included`, `concerning`, `validates_presence_of`, `validates_uniqueness_of`, `validates_length_of`, `validates_format_of`, `has_and_belongs_to_many`, `after_initialize`, `after_find`, `before_destroy`, `after_destroy`, `before_update`, `after_update`, `before_validation`, `after_validation`, `rescue_from`, `helper_method`, `helper`, `memoize`, `freeze`
+- 42 new tests in bug-check.mjs covering keyword args with receiver, scoped rescue constants, and all new bare methods
+
 ## [0.4.0] - 2026-03-26
 
 ### Added

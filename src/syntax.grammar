@@ -57,9 +57,21 @@ BareMethodCall {
    bareMethod<"validates"> | bareMethod<"validate"> |
    bareMethod<"has_many"> | bareMethod<"has_one"> | bareMethod<"belongs_to"> |
    bareMethod<"before_action"> | bareMethod<"after_action"> | bareMethod<"around_action"> |
+   bareMethod<"skip_before_action"> | bareMethod<"skip_after_action"> | bareMethod<"skip_around_action"> |
    bareMethod<"before_create"> | bareMethod<"before_save"> | bareMethod<"after_create"> | bareMethod<"after_save"> |
+   bareMethod<"after_initialize"> | bareMethod<"after_find"> |
+   bareMethod<"before_destroy"> | bareMethod<"after_destroy"> |
+   bareMethod<"before_update"> | bareMethod<"after_update"> |
+   bareMethod<"before_validation"> | bareMethod<"after_validation"> |
    bareMethod<"render"> | bareMethod<"redirect_to"> |
    bareMethod<"delegate"> | bareMethod<"scope"> | bareMethod<"enum"> |
+   bareMethod<"has_and_belongs_to_many"> |
+   bareMethod<"validates_presence_of"> | bareMethod<"validates_uniqueness_of"> |
+   bareMethod<"validates_length_of"> | bareMethod<"validates_format_of"> |
+   bareMethod<"class_methods"> | bareMethod<"included"> | bareMethod<"concerning"> |
+   bareMethod<"rescue_from"> |
+   bareMethod<"helper_method"> | bareMethod<"helper"> |
+   bareMethod<"memoize"> | bareMethod<"freeze"> |
    bareMethod<"task"> | bareMethod<"desc"> | bareMethod<"namespace"> |
    bareMethod<"raise">)
   commaSep1<Arg>
@@ -97,7 +109,7 @@ OperatorMethodName {
 MethodBody { statement* RescueClause* ElseClause? EnsureClause? }
 
 ParamList {
-  "(" commaSep<Param> ")"
+  "(" ~paramOrParen commaSep<Param> ")"
 }
 
 Param {
@@ -109,11 +121,11 @@ Param {
   Identifier ~paramOrExpr
 }
 
-SplatParam { "*" Identifier }
-DoubleSplatParam { "**" Identifier }
+SplatParam { "*" Identifier ~paramOrParen }
+DoubleSplatParam { "**" Identifier ~paramOrParen }
 BlockParam { "&" Identifier ~paramOrExpr }
 // KeywordParam: name: (required keyword) or name: default (keyword with default)
-KeywordParam { Identifier colonOp expression? }
+KeywordParam { Identifier colonOp expression? ~paramOrParen }
 DefaultParam { Identifier "=" expression }
 
 ClassDef {
@@ -203,11 +215,13 @@ RescueClause {
   kw<"rescue"> ExceptionList? statement*
 }
 
-// ExceptionList: rescue StandardError => e, rescue => e (bare), rescue StandardError, RuntimeError => e
+// ExceptionList: rescue StandardError => e, rescue => e (bare), rescue Foo::Bar => e
+// exceptionName allows scoped constants like Foo::Bar::Baz
 ExceptionList {
-  Constant ~rescue ("," Constant)* ("=>" Identifier)? |
+  exceptionName ("," exceptionName)* ("=>" Identifier)? |
   "=>" Identifier
 }
+exceptionName { Constant ~rescue (~scopeOrException "::" Constant)* ~scopeOrException }
 
 EnsureClause {
   kw<"ensure"> statement*
@@ -350,11 +364,18 @@ UnaryExpression {
   ("!" | kw<"not"> | "-" | ArithOp | "~") !unary expression
 }
 
-// ParenExpression allows comma-separated expressions and `&expr` for block-pass
-// in receiver-style calls where the LR parser treats `obj.method(args)` as
-// MethodCall + ParenExpression.
-ParenExpression { "(" (BlockPassExpression | expression ("," expression)* ","?) ")" }
-BlockPassExpression { "&" expression }
+// ParenExpression allows comma-separated args (including keyword args, splats,
+// and block-pass) for receiver-style calls where the LR parser treats
+// `obj.method(args)` as MethodCall + ParenExpression.
+// Manual comma list (not commaSep template) to avoid reduce/reduce with ParamList.
+ParenExpression { "(" ~paramOrParen (parenElement ("," parenElement)* ","?)? ")" }
+parenElement {
+  "*" expression ~paramOrParen |
+  "**" expression ~paramOrParen |
+  "&" expression ~paramOrParen |
+  Identifier colonOp expression ~paramOrParen |
+  expression ~paramOrParen
+}
 
 Block {
   ~blockOrHash "{" BlockParams? statement* "}" ~blockOrHash

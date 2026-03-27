@@ -43,13 +43,13 @@ Tested against popular open source Ruby projects (large, representative files):
 
 - **Definitions**: methods (with params, endless `def f(x) = expr`), classes (with inheritance), modules
 - **Control flow**: if/elsif/else, unless, while, until, for/in, case/when, case/in (pattern matching with pin operators, hash patterns, find patterns)
-- **Error handling**: begin/rescue/ensure/raise
+- **Error handling**: begin/rescue/ensure/raise, rescue with scoped constants (`rescue Foo::Bar => e`)
 - **Strings**: single-quoted, double-quoted with `#{interpolation}`, heredocs (`<<~DELIM`), `%`-literals with any delimiter
 - **Literals**: integers, floats, symbols, character literals (`?a`), arrays, hashes, regex (`/pattern/flags`), nil, true, false
-- **Expressions**: assignment (including `||=`, `&&=`), multiple assignment (`a, b = 1, 2`), method calls (with receiver, args, splat `*args`/`**kwargs`/`&block`), chained calls, binary/unary/ternary operators, lambdas, ranges, conditional modifiers
+- **Expressions**: assignment (including `||=`, `&&=`), multiple assignment (`a, b = 1, 2`), method calls (with receiver and keyword args like `User.where(active: true)`, splat `*args`/`**kwargs`/`&block`), chained calls, binary/unary/ternary operators, lambdas, ranges, conditional modifiers
 - **Blocks**: brace blocks and do/end blocks attached to method calls (`items.each { |x| x }`)
 - **Operators**: proper precedence (`**` > `*`/`/` > `+`/`-` > comparison > logic), safe navigation (`&.`), scope resolution (`::` including leading `::TopLevel`)
-- **Bare method calls**: `puts "hello"`, `require "json"`, `attr_reader :name`, `include Comparable` (25 common Ruby methods)
+- **Bare method calls**: `puts "hello"`, `require "json"`, `attr_reader :name`, `include Comparable`, `validates_presence_of :name`, `rescue_from`, `helper_method` (49 common Ruby/Rails methods)
 - **Variables**: local, `@instance`, `@@class`, `$global`, `Constants`
 - **Comments**: line `#` and block `=begin`/`=end`
 - **Editor features**: smart indentation, code folding, bracket closing, keyword autocompletion (31 keywords)
@@ -68,7 +68,7 @@ Tested against popular open source Ruby projects (large, representative files):
 ```bash
 npm install          # Install dependencies
 npm run build        # Build grammar + bundle to dist/
-npm test             # Run 105 grammar tests (575 total across all suites)
+npm test             # Run 105 grammar tests (721 total across all suites)
 npm run lint         # TypeScript type check
 npm run demo:build   # Build the demo page
 ```

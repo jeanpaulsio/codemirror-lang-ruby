@@ -279,6 +279,65 @@ section("BUG-034: Complex params", [
   ["all param types", "def foo(a, b = 1, *c, d:, e: 2, **f, &g)\n  1\nend", true],
 ]);
 
+// BUG-035: Keyword args with receiver (obj.foo(kw: 1))
+section("BUG-035: Keyword args with receiver", [
+  ["obj.foo(a: 1)", "obj.foo(a: 1)", true],
+  ["obj.foo(1, a: 1)", "obj.foo(1, a: 1)", true],
+  ["Foo.bar(a: 1)", "Foo.bar(a: 1)", true],
+  ["@x.foo(a: 1)", "@x.foo(a: 1)", true],
+  ["self.foo(a: 1)", "self.foo(a: 1)", true],
+  ["User.where(active: true).order(:name)", "User.where(active: true).order(:name)", true],
+  ["posts.update_all(hidden: true)", "posts.update_all(hidden: true)", true],
+  // Regression checks
+  ["foo(a: 1) — no receiver", "foo(a: 1)", true],
+  ["obj.foo(1) — positional with receiver", "obj.foo(1)", true],
+  ["obj.foo(1, 2) — multiple positional with receiver", "obj.foo(1, 2)", true],
+]);
+
+// BUG-036: Scoped constants in rescue
+section("BUG-036: Scoped constants in rescue", [
+  ["rescue Foo::Bar => e", "begin\n  x\nrescue Foo::Bar => e\n  y\nend", true],
+  ["rescue Foo::Bar, Baz => e", "begin\n  x\nrescue Foo::Bar, Baz => e\n  y\nend", true],
+  ["rescue Foo::Bar::Baz => e", "begin\n  x\nrescue Foo::Bar::Baz => e\n  y\nend", true],
+  ["rescue Foo => e — still works", "begin\n  x\nrescue Foo => e\n  y\nend", true],
+  ["rescue StandardError => e — still works", "begin\n  x\nrescue StandardError => e\n  y\nend", true],
+]);
+
+// BUG-037: New bare method names
+section("BUG-037: New bare methods", [
+  ["skip_before_action", "skip_before_action :auth", true],
+  ["skip_after_action", "skip_after_action :log", true],
+  ["skip_around_action", "skip_around_action :wrap", true],
+  ["class_methods", "class_methods :foo", true],
+  ["included", "included :mod", true],
+  ["concerning", 'concerning :Authentication', true],
+  ["validates_presence_of", "validates_presence_of :name", true],
+  ["validates_uniqueness_of", "validates_uniqueness_of :email", true],
+  ["validates_length_of", "validates_length_of :name, maximum: 100", true],
+  ["validates_format_of", 'validates_format_of :email, with: /\\A.+@.+\\z/', true],
+  ["has_and_belongs_to_many", "has_and_belongs_to_many :tags", true],
+  ["after_initialize", "after_initialize :setup", true],
+  ["after_find", "after_find :decorate", true],
+  ["before_destroy", "before_destroy :cleanup", true],
+  ["after_destroy", "after_destroy :log_deletion", true],
+  ["before_update", "before_update :normalize", true],
+  ["after_update", "after_update :broadcast", true],
+  ["before_validation", "before_validation :strip_whitespace", true],
+  ["after_validation", "after_validation :set_slug", true],
+  ["rescue_from", "rescue_from StandardError, with: :handle", true],
+  ["helper_method", "helper_method :current_user", true],
+  ["helper", "helper :formatting", true],
+  ["memoize", "memoize :expensive_calc", true],
+  ["freeze", "freeze :config", true],
+]);
+
+// BUG-035 integration: realistic multi-line code with receiver + kw args
+section("BUG-035: Integration", [
+  ["ActiveRecord where + order", "User.where(active: true, role: :admin).order(created_at: :desc)", true],
+  ["multi-line chained call", "Post\n  .where(published: true)\n  .order(date: :desc)\n  .limit(10)", true],
+  ["update_all in class", "class PostCleaner\n  def run\n    Post.where(stale: true).update_all(hidden: true)\n  end\nend", true],
+]);
+
 // Summary
 console.log("\n--- SUMMARY ---");
 console.log(`PASS: ${results.pass}`);
