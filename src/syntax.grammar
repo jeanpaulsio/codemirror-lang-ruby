@@ -439,10 +439,11 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
   @else StringContent
 }
 
-// Heredocs are matched as a single opaque token by the external tokenizer.
-// The tokenizer reads <<[-~]?DELIM, scans to the closing DELIM line, and
-// emits the entire heredoc as one Heredoc token. Interpolation inside
-// heredocs is not yet supported (would need @local tokens + ContextTracker).
+// Heredocs: emitted as a single Heredoc token by lessThanTokenizer.
+// When there's no trailing code after the opener, the token spans the entire
+// heredoc (opener + body + closing delimiter). When there IS trailing code
+// (e.g. foo(<<~SQL) or <<~HEREDOC.strip), only the opener is emitted so
+// the parser can handle the trailing syntax correctly.
 
 Array { "[" commaSep<expression> "]" }
 Hash { ~blockOrHash "{" (HashPair ("," HashPair)* ","?)? "}" ~blockOrHash }
