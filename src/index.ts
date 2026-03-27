@@ -64,7 +64,8 @@ const DEINDENT_CLOSE = /^\s*[\}\]\)]/
 const INTERMEDIATE = /^\s*(else|elsif|when|in|rescue|ensure)\b/
 
 // Line ends with a continuation indicator (trailing operator, comma, backslash)
-const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#.*)?$/
+// The optional trailing comment uses (#(?:[^{].*)?)? to avoid matching #{interpolation} inside strings
+const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#(?:[^{].*)?)?$/
 
 // Line starts with a dot (method chaining continuation)
 const LEADING_DOT = /^\s*\./
@@ -85,6 +86,27 @@ function prevLineFrom(cx: IndentContext, lineFrom: number): number {
   if (lineFrom <= 0) return -1
   const prevLine = cx.lineAt(lineFrom - 1)
   return prevLine.from
+}
+
+// Check if a line is inside an unclosed delimiter ({, [, ()
+// by scanning backwards from lineFrom to count unmatched openers
+function isInsideDelimiter(cx: IndentContext, lineFrom: number): boolean {
+  let depth = 0
+  let scanFrom = lineFrom
+  while (true) {
+    scanFrom = prevLineFrom(cx, scanFrom)
+    if (scanFrom < 0) break
+    const text = lineText(cx, scanFrom)
+    for (let i = text.length - 1; i >= 0; i--) {
+      const ch = text[i]
+      if (ch === "}" || ch === "]" || ch === ")") depth++
+      else if (ch === "{" || ch === "[" || ch === "(") {
+        if (depth === 0) return true
+        depth--
+      }
+    }
+  }
+  return false
 }
 
 function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
@@ -211,6 +233,11 @@ function rubyIndentService(cx: IndentContext, pos: number): number | undefined {
 
     // Previous line ends with continuation (trailing operator, comma, backslash)
     if (CONTINUATION.test(prevText)) {
+      // Inside delimited constructs ({}, [], ()), don't add extra indent —
+      // delimitedIndent already handles the correct level
+      if (isInsideDelimiter(cx, prevFrom)) {
+        return prevIndent
+      }
       // Check if the line before that was also a continuation — if so, stay at same level
       if (prevFrom > 0) {
         let prev2From = prevLineFrom(cx, prevFrom)
