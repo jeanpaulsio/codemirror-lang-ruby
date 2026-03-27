@@ -27348,10 +27348,15 @@
   // ============================================================
   // Less-than / Heredoc external tokenizer (#10)
   //
-  // `<` is ambiguous: comparison, `<=`, `<<` left shift, or heredoc start.
+  // `<` is ambiguous: comparison, `<=`, `<<` left shift, or heredoc.
   // When `<<` is followed by [-~]?IDENTIFIER (or quoted string), and the
-  // parser allows Heredoc, we scan to the matching closing delimiter
-  // and emit the entire heredoc as one token.
+  // parser allows Heredoc, we emit a Heredoc token.
+  //
+  // Two modes depending on trailing code after the opener:
+  // 1. No trailing code: token spans opener + body + closing delimiter
+  // 2. Trailing code (e.g. foo(<<~SQL) or <<~HEREDOC.strip): token spans
+  //    only the opener, allowing the parser to handle trailing syntax
+  //
   // Otherwise emit lessThanOp or lessThanEqOp for comparison.
   // ============================================================
   const lessThanTokenizer = new ExternalTokenizer((input, stack) => {
@@ -27361,9 +27366,9 @@
       // Try heredoc: <<
       if (second === 60 /* '<' */) {
           if (stack.canShift(Heredoc)) {
-              const heredocLen = tryMatchHeredoc(input);
-              if (heredocLen > 0) {
-                  input.acceptToken(Heredoc, heredocLen);
+              const result = tryMatchHeredoc(input);
+              if (result) {
+                  input.acceptToken(Heredoc, result);
                   return;
               }
           }
@@ -27388,13 +27393,20 @@
           input.acceptToken(lessThanOp, 1);
       }
   });
-  // Try to match a complete heredoc starting at the current position.
-  // Returns the total length including the closing delimiter, or 0 if no match.
+  // Try to match a heredoc at the current position.
+  // Returns the total token length, or null if no match.
+  //
+  // Two modes:
+  // 1. No trailing code after opener: token spans opener + body + closing delimiter
+  //    e.g. <<~SQL\n  SELECT 1\nSQL → entire thing is one token
+  // 2. Trailing code after opener: token spans only the opener
+  //    e.g. <<~SQL in foo(<<~SQL) → just <<~SQL is the token
   function tryMatchHeredoc(input) {
       let pos = 2; // past <<
       // Optional - or ~
       const modifier = input.peek(pos);
-      if (modifier === 45 /* - */ || modifier === 126 /* ~ */)
+      const indented = modifier === 45 /* - */ || modifier === 126; /* ~ */
+      if (indented)
           pos++;
       // Read the delimiter
       let delimiter = "";
@@ -27405,7 +27417,7 @@
           while (true) {
               const ch = input.peek(pos);
               if (ch === -1 || ch === 10)
-                  return 0; // unterminated quote
+                  return null; // unterminated quote
               if (ch === quoteChar) {
                   pos++;
                   break;
@@ -27417,90 +27429,87 @@
       else {
           // Bare identifier delimiter: <<~DELIM
           if (!isIdentStart(input.peek(pos)))
-              return 0;
+              return null;
           while (isIdentChar(input.peek(pos))) {
               delimiter += String.fromCharCode(input.peek(pos));
               pos++;
           }
       }
       if (!delimiter)
-          return 0;
-      // After the delimiter, only whitespace/comments allowed on the rest of the line.
-      // If there's code (like .method or (args)), this is << left-shift, not a heredoc.
+          return null;
+      const openerLength = pos; // This is the length of just <<~DELIM
+      // Check what follows the delimiter on the same line.
+      // For bare identifiers without a modifier, non-whitespace trailing code
+      // means this is << operator, not heredoc. E.g. <<File.expand_path(...)
+      // With a modifier (<<~ or <<-) or quoted delimiter, trailing code is OK.
+      let scanPos = pos;
+      let hasTrailingCode = false;
       while (true) {
-          const ch = input.peek(pos);
+          const ch = input.peek(scanPos);
           if (ch === -1)
-              return 0;
+              return null; // EOF on opener line, no body possible
           if (ch === 10) {
-              pos++;
+              scanPos++;
               break;
           }
           if (ch === 13) {
-              pos++;
-              if (input.peek(pos) === 10)
-                  pos++;
+              scanPos++;
+              if (input.peek(scanPos) === 10)
+                  scanPos++;
               break;
           }
           if (ch === 32 || ch === 9) {
-              pos++;
+              scanPos++;
               continue;
-          } // whitespace OK
+          }
           if (ch === 35 /* # */) { // comment — skip rest of line
               while (true) {
-                  const c = input.peek(pos);
+                  const c = input.peek(scanPos);
                   if (c === -1 || c === 10 || c === 13)
                       break;
-                  pos++;
+                  scanPos++;
               }
               continue;
           }
-          // For bare identifiers (not quoted), any non-whitespace after delimiter
-          // means this is << operator, not heredoc. E.g. <<File.expand_path(...)
-          if (quoteChar !== 39 && quoteChar !== 34 && quoteChar !== 96)
-              return 0;
-          pos++; // quoted delimiters can have trailing content (e.g. <<~"SQL", other_arg)
+          // Bare identifier without modifier + trailing code = not a heredoc
+          if (quoteChar !== 39 && quoteChar !== 34 && quoteChar !== 96 &&
+              !indented)
+              return null;
+          hasTrailingCode = true;
+          scanPos++; // modifier/quoted → skip trailing code
       }
-      // Scan lines looking for the closing delimiter
-      const isIndented = modifier === 45 || modifier === 126; // <<- or <<~
       while (true) {
           let lineContent = "";
-          // For indented heredocs (<<- or <<~), skip leading whitespace
-          if (isIndented) {
-              while (input.peek(pos) === 32 || input.peek(pos) === 9)
-                  pos++;
+          if (indented) {
+              while (input.peek(scanPos) === 32 || input.peek(scanPos) === 9)
+                  scanPos++;
           }
-          // Read the rest of the line
           while (true) {
-              const ch = input.peek(pos);
+              const ch = input.peek(scanPos);
               if (ch === -1 || ch === 10 || ch === 13)
                   break;
               lineContent += String.fromCharCode(ch);
-              pos++;
+              scanPos++;
           }
-          // Check if this line matches the delimiter (trimmed)
           if (lineContent === delimiter) {
-              // Include the delimiter line in the token
-              // Advance past newline if present
-              const ch = input.peek(pos);
-              if (ch === 10)
-                  pos++;
-              else if (ch === 13) {
-                  pos++;
-                  if (input.peek(pos) === 10)
-                      pos++;
+              // Found closing delimiter
+              if (hasTrailingCode) {
+                  // Trailing code present — emit only the opener so the parser
+                  // can handle ), .method, etc. on the same line
+                  return openerLength;
               }
-              return pos;
+              // No trailing code — emit the full heredoc (opener + body + delimiter)
+              return scanPos;
           }
-          // Advance past newline
-          const ch = input.peek(pos);
+          const ch = input.peek(scanPos);
           if (ch === -1)
-              return pos; // unterminated heredoc — emit what we have
+              return null; // EOF without closing delimiter
           if (ch === 10)
-              pos++;
+              scanPos++;
           else if (ch === 13) {
-              pos++;
-              if (input.peek(pos) === 10)
-                  pos++;
+              scanPos++;
+              if (input.peek(scanPos) === 10)
+                  scanPos++;
           }
       }
   }
@@ -27859,7 +27868,8 @@
   // Intermediate keywords whose body should indent
   const INTERMEDIATE = /^\s*(else|elsif|when|in|rescue|ensure)\b/;
   // Line ends with a continuation indicator (trailing operator, comma, backslash)
-  const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#.*)?$/;
+  // The optional trailing comment uses (#(?:[^{].*)?)? to avoid matching #{interpolation} inside strings
+  const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#(?:[^{].*)?)?$/;
   // Line starts with a dot (method chaining continuation)
   const LEADING_DOT = /^\s*\./;
   function opensBlock(text) {
@@ -27877,6 +27887,29 @@
           return -1;
       const prevLine = cx.lineAt(lineFrom - 1);
       return prevLine.from;
+  }
+  // Check if a line is inside an unclosed delimiter ({, [, ()
+  // by scanning backwards from lineFrom to count unmatched openers
+  function isInsideDelimiter(cx, lineFrom) {
+      let depth = 0;
+      let scanFrom = lineFrom;
+      while (true) {
+          scanFrom = prevLineFrom(cx, scanFrom);
+          if (scanFrom < 0)
+              break;
+          const text = lineText(cx, scanFrom);
+          for (let i = text.length - 1; i >= 0; i--) {
+              const ch = text[i];
+              if (ch === "}" || ch === "]" || ch === ")")
+                  depth++;
+              else if (ch === "{" || ch === "[" || ch === "(") {
+                  if (depth === 0)
+                      return true;
+                  depth--;
+              }
+          }
+      }
+      return false;
   }
   function rubyIndentService(cx, pos) {
       const line = cx.lineAt(pos);
@@ -28006,6 +28039,11 @@
           }
           // Previous line ends with continuation (trailing operator, comma, backslash)
           if (CONTINUATION.test(prevText)) {
+              // Inside delimited constructs ({}, [], ()), don't add extra indent —
+              // delimitedIndent already handles the correct level
+              if (isInsideDelimiter(cx, prevFrom)) {
+                  return prevIndent;
+              }
               // Check if the line before that was also a continuation — if so, stay at same level
               if (prevFrom > 0) {
                   let prev2From = prevLineFrom(cx, prevFrom);

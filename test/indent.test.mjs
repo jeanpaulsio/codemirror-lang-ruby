@@ -1522,11 +1522,16 @@ test("28a deeply nested hash", () => {
          expectIndent(code, 9, 0, "} at level 0")
 })
 
-skip("28b array of hashes", "trailing comma inside delimiters triggers CONTINUATION indent — scanner doesn't track delimiter depth to suppress it")
+test("28b array of hashes (one hash per line)", () => {
+  // Each hash on its own line inside an array — trailing commas should not over-indent
+  const code = 'users = [\n  { name: "Alice" },\n  { name: "Bob" },\n]'
+  return expectIndent(code, 3, 2, "second hash at column 2") &&
+         expectIndent(code, 4, 0, "closing ] at column 0")
+})
 
 skip("28c hash with array values and blocks", "complex continuation + chain inside hash")
 
-console.log("  Section 28: 3 cases (2 skipped)")
+console.log("  Section 28: 3 cases (1 skipped)")
 
 // ============================================================
 // Section 29: Real-World Patterns
@@ -1831,6 +1836,87 @@ test("32k proc call with brackets", () => {
 })
 
 console.log("  Section 32: 11 cases (2 skipped)")
+
+// ============================================================
+// Section 33: Trailing Comma Inside Delimiters (Bug Fix)
+// ============================================================
+
+console.log("\n33. Trailing Comma Inside Delimiters")
+
+test("33a hash entry after trailing comma stays at same level", () => {
+  // def foo
+  //   baz = {
+  //     foo: "bar",
+  //     |  ← cursor should be here (column 4)
+  const code = 'def foo\n  baz = {\n    foo: "bar",\n    next_entry\n  }\nend'
+  return expectIndent(code, 4, 4, "next hash entry at column 4, not 6")
+})
+
+test("33b array entry after trailing comma stays at same level", () => {
+  const code = 'items = [\n  "first",\n  "second"\n]'
+  return expectIndent(code, 3, 2, "next array entry at column 2")
+})
+
+test("33c method args after trailing comma stays at same level", () => {
+  const code = 'foo(\n  arg1,\n  arg2\n)'
+  return expectIndent(code, 3, 2, "next arg at column 2")
+})
+
+test("33d nested hash with trailing commas", () => {
+  const code = 'config = {\n  db: {\n    host: "localhost",\n    port: 5432,\n    name: "mydb"\n  },\n  cache: {}\n}'
+  return expectIndent(code, 4, 4, "port at column 4") &&
+         expectIndent(code, 5, 4, "name at column 4")
+})
+
+test("33e hash inside method def with trailing comma", () => {
+  const code = 'def foo\n  baz = {\n    foo: "bar",\n    baz: "qux",\n    quux: "corge"\n  }\nend'
+  return expectIndent(code, 4, 4, "baz: at column 4") &&
+         expectIndent(code, 5, 4, "quux: at column 4")
+})
+
+test("33f array inside method def with trailing comma", () => {
+  const code = 'def foo\n  items = [\n    "a",\n    "b",\n    "c"\n  ]\nend'
+  return expectIndent(code, 4, 4, "b at column 4") &&
+         expectIndent(code, 5, 4, "c at column 4")
+})
+
+test("33g call inside method def with trailing comma", () => {
+  const code = 'def bar\n  foo(\n    1,\n    2\n  )\nend'
+  return expectIndent(code, 4, 4, "next arg at column 4")
+})
+
+test("33h config pattern: hash > hash > array nesting", () => {
+  const code = 'config = {\n  database: {\n    adapter: "postgresql",\n    hosts: [\n      "primary",\n      "secondary"\n    ]\n  }\n}'
+  return expectIndent(code, 4, 4, "hosts key at column 4") &&
+         expectIndent(code, 6, 6, "secondary at column 6")
+})
+
+test("33i bare call trailing comma still gets continuation indent", () => {
+  const code = 'validates :email,\n  presence: true'
+  return expectIndent(code, 2, 2, "continuation after bare call trailing comma")
+})
+
+test("33j bare call trailing comma in def still gets continuation indent", () => {
+  const code = 'def foo\n  puts a,\n    b\nend'
+  return expectIndent(code, 3, 4, "continuation inside def after bare call comma")
+})
+
+test("33k puts trailing comma still gets continuation indent", () => {
+  const code = 'puts a,\n  b'
+  return expectIndent(code, 2, 2, "continuation after puts comma")
+})
+
+test("33l interpolated string does not trigger continuation indent", () => {
+  const code = 'class Greeter\n  def greet\n    "Hello, #{@name}!"\n    \n  end\nend'
+  return expectIndent(code, 4, 4, "line after interpolated string at column 4")
+})
+
+test("33m simple string with comma does not trigger continuation indent", () => {
+  const code = 'def foo\n  x = "hello, world"\n  \nend'
+  return expectIndent(code, 3, 2, "line after string with comma at column 2")
+})
+
+console.log("  Section 33: 13 cases")
 
 // ============================================================
 // Summary
