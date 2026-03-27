@@ -61,6 +61,8 @@ Tested against popular open source Ruby projects (large, representative files):
 - **Heredoc and `%`-literal bodies** are opaque tokens (no interpolation highlighting inside).
 - **Inline rescue as a standalone expression** — `value = foo rescue nil` works (rescue in assignments), but `foo rescue bar` as a standalone expression outside of assignment context is not supported.
 - **Newline as statement separator** — Ruby uses newlines to separate statements, but the grammar is whitespace-insensitive. An expression followed by `if` on the next line may be parsed as a conditional modifier (e.g., `x = 1\nif cond` parses as `x = (1 if cond)`).
+- **Setter assignment with conditional modifier** — `self.x = 1 if condition` is not fully supported.
+- **Bare method calls** only work for a curated list of 49 common Ruby/Rails methods. Other methods need parentheses (e.g., `assert_includes(errors, "msg")` instead of `assert_includes errors, "msg"`).
 - **Line-based indentation** — The indent engine uses regex line scanning rather than tree-based analysis. Most patterns work well, but complex multi-line expressions (e.g., multi-line method args followed by a body, trailing commas inside nested delimiters) may not indent perfectly.
 
 ## Development
