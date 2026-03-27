@@ -1,7 +1,7 @@
 import {styleTags, tags as t} from "@lezer/highlight"
 
 export const rubyHighlighting = styleTags({
-  "def class module end do begin rescue ensure return yield": t.keyword,
+  "def class module end do begin rescue ensure return yield super": t.keyword,
   "BareMethodCall/raise": t.keyword,
   "if elsif else unless case when then while until for in break next": t.keyword,
   "and or not": t.keyword,

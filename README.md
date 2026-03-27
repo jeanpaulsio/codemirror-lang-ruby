@@ -50,22 +50,24 @@ Tested against popular open source Ruby projects (large, representative files):
 - **Bare method calls**: `puts "hello"`, `require "json"`, `attr_reader :name`, `include Comparable` (25 common Ruby methods)
 - **Variables**: local, `@instance`, `@@class`, `$global`, `Constants`
 - **Comments**: line `#` and block `=begin`/`=end`
-- **Editor features**: smart indentation (119 test cases), code folding, bracket closing, keyword autocompletion (31 keywords)
+- **Editor features**: smart indentation, code folding, bracket closing, keyword autocompletion (31 keywords)
 
 ## Known limitations
 
-- Blank lines inside class/method bodies can produce spurious error nodes (~38% of parse errors)
-- Multi-arg bare method calls (`raise ArgumentError, "msg"`) not fully supported
-- Compound assignment operators (`+=`, `-=`, `|=`) in some contexts
-- Heredoc and `%`-literal bodies are opaque tokens (no interpolation highlighting inside)
-- `<<` left-shift operator not distinguished from heredoc start
+- **Heredocs as arguments or in chains** — `foo(<<~SQL)` and `<<~HEREDOC.strip` don't parse correctly. Heredocs assigned to variables (`x = <<~SQL`) work fine. The limitation is architectural: the heredoc body starts on the next line but the closing `)` or `.method` needs to be parsed on the current line, which requires a split-token approach not yet implemented.
+- **Leading `::` scope resolution** — `::TopLevel` as a standalone expression doesn't parse. Scoped references with a receiver (`Foo::Bar`, `Foo::Bar::Baz`) work fine.
+- **Advanced pattern matching** — Basic `case/in` with array patterns and pin operators work. Hash patterns (`in {name: String => n}`), guard clauses (`in x if x > 0`), and find patterns (`in [*, 2, *]`) are not yet supported.
+- **Heredoc and `%`-literal bodies** are opaque tokens (no interpolation highlighting inside).
+- **Inline rescue as a standalone expression** — `value = foo rescue nil` works (rescue in assignments), but `foo rescue bar` as a standalone expression outside of assignment context is not supported.
+- **Newline as statement separator** — Ruby uses newlines to separate statements, but the grammar is whitespace-insensitive. An expression followed by `if` on the next line may be parsed as a conditional modifier (e.g., `x = 1\nif cond` parses as `x = (1 if cond)`).
+- **Symbol-key shorthand in method calls** — `foo(name: "value")` with symbol-key syntax is not yet supported. Use rocket syntax `foo(:name => "value")` as a workaround.
 
 ## Development
 
 ```bash
 npm install          # Install dependencies
 npm run build        # Build grammar + bundle to dist/
-npm test             # Run all 89 grammar tests
+npm test             # Run all 105 grammar tests
 npm run lint         # TypeScript type check
 npm run demo:build   # Build the demo page
 ```

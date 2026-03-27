@@ -12,7 +12,7 @@
 
 // Newlines and semicolons are whitespace — the grammar uses structural
 // delimiters (keywords, braces, parens) to determine statement boundaries.
-@skip { whitespace | semicolonSkip | LineComment | BlockComment }
+@skip { whitespace | semicolonSkip | lineContinuation | LineComment | BlockComment }
 
 statement {
   ExpressionStatement { expression !exprEnd } |
@@ -28,8 +28,16 @@ statement {
   BeginBlock ~stmtOrExpr |
   Assignment |
   MultipleAssignment |
-  BareMethodCall
+  BareMethodCall |
+  Super
 }
+
+// super with arguments. Bare `super` (no args) is handled as Identifier via @extend.
+// Uses @extend to avoid conflict with kw<> (@specialize) in other rules.
+Super {
+  superKw commaSep1<Arg>
+}
+superKw[@name=super] { @extend<Identifier, "super"> }
 
 // Bare method calls without parens for common Ruby methods.
 // Uses a curated keyword list to avoid ambiguity with local variables.
@@ -161,12 +169,16 @@ WhenClause {
 
 // Pattern matching (Ruby 3.0+)
 // Patterns reuse expression since they highlight identically. The pin operator
-// (^variable) is the only pattern-specific construct.
+// (^variable) and pattern binding (Type => var) are pattern-specific constructs.
 // Guard clauses (in pattern if condition) are deferred — the if/unless
 // keyword conflicts with IfStatement/UnlessStatement in the LR parser.
+// Hash patterns ({name: Type => var}) and find patterns ([*, x, *]) are also deferred.
 InClause {
-  kw<"in"> (PinExpression | expression) statement*
+  kw<"in"> (PinExpression | PatternBinding | expression) statement*
 }
+
+// Pattern binding: match a type and bind to a variable (e.g., Integer => n)
+PatternBinding { expression "=>" Identifier }
 
 // Pin operator — scoped to InClause only, since ^ is bitwise XOR elsewhere
 PinExpression { "^" expression }
@@ -190,10 +202,19 @@ EnsureClause {
 }
 
 Assignment {
-  (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant)
-  AssignOp expression |
-  SubscriptExpression AssignOp expression
+  (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant | ScopeResolution)
+  AssignOp InlineRescue |
+  (Identifier | InstanceVariable | ClassVariable | GlobalVariable | Constant | ScopeResolution)
+  AssignOp expression ~rescueInAssign |
+  SubscriptExpression AssignOp InlineRescue |
+  SubscriptExpression AssignOp expression ~rescueInAssign |
+  expression !member "." Identifier AssignOp expression ~rescueInAssign
 }
+
+// Inline rescue: `value = foo rescue default_val`
+// Only in Assignment context to avoid conflict with RescueClause in method/begin bodies.
+// GLR marker ~rescueInAssign resolves ambiguity with RescueClause after assignments.
+InlineRescue { expression ~rescueInAssign kw<"rescue"> expression }
 
 // Multiple assignment: a, b = 1, 2 or a, *b = [1, 2, 3]
 MultipleAssignment {
@@ -228,7 +249,6 @@ expression {
   kw<"self"> |
   kw<"return"> |
   kw<"yield"> |
-  kw<"super"> |
   IfStatement ~stmtOrExpr |
   UnlessStatement ~stmtOrExpr |
   CaseStatement ~stmtOrExpr |
@@ -264,7 +284,9 @@ BlockCall { expression !blockCall (Block | DoBlock) }
 MethodCall {
   expression !member "." Identifier ArgList? |
   expression !member "&." Identifier ArgList? |
-  Identifier !call ArgList
+  expression !member "." ArgList |
+  Identifier !call ArgList |
+  Constant !call ArgList
 }
 
 // Scope resolution: Foo::Bar, Foo::Bar::Baz, self::method
@@ -336,11 +358,16 @@ DoBlock {
 doKw[@name=do] { @extend<Identifier, "do"> }
 
 BlockParams {
-  "|" commaSep<Identifier> "|"
+  "|" commaSep<blockParam> "|"
 }
 
+blockParam { DestructuredParam | Identifier }
+DestructuredParam { "(" commaSep<Identifier> ")" }
+
 Lambda {
-  "->" ParamList? (Block | DoBlock)
+  "->" ParamList (Block | DoBlock) |
+  "->" Identifier ~paramOrExpr (Block | DoBlock) |
+  "->" (Block | DoBlock)
 }
 
 Range {
@@ -418,6 +445,8 @@ bareMethod<term> { @extend[@name={term}]<Identifier, term> }
 @tokens {
   whitespace { $[ \t\n\r]+ }
   semicolonSkip { ";" }
+  // Backslash at end of line joins next line (line continuation)
+  lineContinuation { "\\" "\n" }
 
   LineComment { "#" ![\n\r]* }
   BlockComment { "=begin" ![]*  "=end" }

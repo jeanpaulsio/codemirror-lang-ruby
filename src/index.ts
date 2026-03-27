@@ -64,7 +64,7 @@ const DEINDENT_CLOSE = /^\s*[\}\]\)]/
 const INTERMEDIATE = /^\s*(else|elsif|when|in|rescue|ensure)\b/
 
 // Line ends with a continuation indicator (trailing operator, comma, backslash)
-const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,)\s*(#.*)?$/
+const CONTINUATION = /(\+|-|\*|&&|\|\||\\|,|\.)\s*(#.*)?$/
 
 // Line starts with a dot (method chaining continuation)
 const LEADING_DOT = /^\s*\./
@@ -230,6 +230,13 @@ export const rubyLanguage = LRLanguage.define({
       }),
       foldNodeProp.add({
         "ClassBody ModuleBody MethodBody Block DoBlock BeginBlock": foldInside,
+        "MethodDef ClassDef ModuleDef"(tree, state) {
+          // Fold from end of first line to before `end`
+          const firstLine = state.doc.lineAt(tree.from)
+          const lastLine = state.doc.lineAt(tree.to)
+          if (firstLine.number >= lastLine.number) return null
+          return {from: firstLine.to, to: lastLine.from}
+        },
         "IfStatement UnlessStatement WhileStatement UntilStatement ForStatement CaseStatement"(tree) {
           return {from: tree.from, to: tree.to}
         },
