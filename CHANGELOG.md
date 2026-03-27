@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] - 2026-03-27
+
+### Fixed
+
+- **Trailing comma inside delimiters** — Pressing Enter after a line ending with a trailing comma inside `{}`, `[]`, or `()` no longer adds an extra indent level. Added delimiter-depth detection so the continuation-indent logic defers to `delimitedIndent` inside brackets.
+- **String interpolation false positive** — The continuation regex's trailing-comment capture `(#.*)?$` was matching `#{interpolation}` inside strings as a comment, causing lines like `"Hello, #{@name}!"` to be treated as trailing-comma continuations. Fixed by excluding `#{` from the comment pattern.
+
+### Added
+
+- 14 new indent test cases (section 33 + unskipped 28b) covering hashes, arrays, method args, nested constructs, bare call continuations, and interpolated strings
+
+## [0.4.2] - 2026-03-27
+
+### Fixed
+
+- **Heredocs with trailing code** — `foo(<<~SQL)`, `<<~HEREDOC.strip`, and similar patterns where code follows the heredoc opener now parse correctly.
+
 ## [0.4.1] - 2026-03-26
 
 ### Fixed
