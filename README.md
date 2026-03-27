@@ -2,6 +2,8 @@
 
 Ruby language support for [CodeMirror 6](https://codemirror.net/), built on a [Lezer](https://lezer.codemirror.net/) grammar.
 
+Targets **Ruby 3.0+** syntax (including endless methods and basic pattern matching).
+
 [**Live Demo**](https://jeanpaulsio.github.io/codemirror-lang-ruby/)
 
 ## Install
@@ -29,13 +31,13 @@ Tested against popular open source Ruby projects (large, representative files):
 
 | Project | File | Lines | Accuracy |
 |---------|------|-------|----------|
-| [Fastlane](https://github.com/fastlane/fastlane) | runner.rb | 379 | **91.3%** |
-| [Grape](https://github.com/ruby-grape/grape) | api.rb | 166 | **90.1%** |
-| [Jekyll](https://github.com/jekyll/jekyll) | site.rb | 577 | **88.4%** |
-| [Devise](https://github.com/heartcombo/devise) | devise.rb | 534 | **87.9%** |
-| [Sidekiq](https://github.com/sidekiq/sidekiq) | config.rb | 321 | **87.5%** |
-| [Rails](https://github.com/rails/rails) | query_methods.rb | 2291 | **86.6%** |
-| [Faker](https://github.com/faker-ruby/faker) | internet.rb | 579 | **85.3%** |
+| [Faker](https://github.com/faker-ruby/faker) | internet.rb | 579 | **98.6%** |
+| [Devise](https://github.com/heartcombo/devise) | devise.rb | 534 | **98.1%** |
+| [Jekyll](https://github.com/jekyll/jekyll) | site.rb | 577 | **97.6%** |
+| [Fastlane](https://github.com/fastlane/fastlane) | runner.rb | 379 | **95.0%** |
+| [Rails](https://github.com/rails/rails) | query_methods.rb | 2291 | **94.2%** |
+| [Grape](https://github.com/ruby-grape/grape) | api.rb | 166 | **94.0%** |
+| [Sidekiq](https://github.com/sidekiq/sidekiq) | config.rb | 321 | **93.5%** |
 
 ## What's supported
 
@@ -61,13 +63,14 @@ Tested against popular open source Ruby projects (large, representative files):
 - **Inline rescue as a standalone expression** — `value = foo rescue nil` works (rescue in assignments), but `foo rescue bar` as a standalone expression outside of assignment context is not supported.
 - **Newline as statement separator** — Ruby uses newlines to separate statements, but the grammar is whitespace-insensitive. An expression followed by `if` on the next line may be parsed as a conditional modifier (e.g., `x = 1\nif cond` parses as `x = (1 if cond)`).
 - **Symbol-key shorthand in method calls** — `foo(name: "value")` with symbol-key syntax is not yet supported. Use rocket syntax `foo(:name => "value")` as a workaround.
+- **Line-based indentation** — The indent engine uses regex line scanning rather than tree-based analysis. Most patterns work well, but complex multi-line expressions (e.g., multi-line method args followed by a body, trailing commas inside nested delimiters) may not indent perfectly.
 
 ## Development
 
 ```bash
 npm install          # Install dependencies
 npm run build        # Build grammar + bundle to dist/
-npm test             # Run all 105 grammar tests
+npm test             # Run 105 grammar tests (575 total across all suites)
 npm run lint         # TypeScript type check
 npm run demo:build   # Build the demo page
 ```
