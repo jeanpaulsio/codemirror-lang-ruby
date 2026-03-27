@@ -56,7 +56,7 @@ Tested against popular open source Ruby projects (large, representative files):
 
 ## Known limitations
 
-- **Heredocs as arguments or in chains** — `foo(<<~SQL)` and `<<~HEREDOC.strip` don't parse correctly. Heredocs assigned to variables (`x = <<~SQL`) work fine. The limitation is architectural: the heredoc body starts on the next line but the closing `)` or `.method` needs to be parsed on the current line, which requires a split-token approach not yet implemented.
+- **Heredoc body highlighting with trailing code** — `foo(<<~SQL)` and `<<~HEREDOC.strip` parse correctly (no error nodes), but the heredoc body is not highlighted as a string in these cases. Simple heredocs (`x = <<~SQL`) highlight the full body as a string. This is a Lezer architectural limitation: inline tokenizers always run before external tokenizers, preventing the body tokenizer from claiming the content.
 - **Guard clauses in pattern matching** — `in x if x > 0` is not supported. The `if`/`unless` keyword conflicts with `IfStatement`/`ConditionalModifier` in the LR parser and cannot be resolved without an external tokenizer.
 - **Heredoc and `%`-literal bodies** are opaque tokens (no interpolation highlighting inside).
 - **Inline rescue as a standalone expression** — `value = foo rescue nil` works (rescue in assignments), but `foo rescue bar` as a standalone expression outside of assignment context is not supported.
