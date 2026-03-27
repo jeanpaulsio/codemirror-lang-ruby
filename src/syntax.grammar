@@ -174,11 +174,18 @@ WhenClause {
 // keyword conflicts with IfStatement/UnlessStatement in the LR parser.
 // Hash patterns ({name: Type => var}) and find patterns ([*, x, *]) are also deferred.
 InClause {
-  kw<"in"> (PinExpression | PatternBinding | expression) statement*
+  kw<"in"> (PinExpression | HashPattern | PatternBinding | expression) statement*
 }
 
 // Pattern binding: match a type and bind to a variable (e.g., Integer => n)
 PatternBinding { expression "=>" Identifier }
+
+// Hash pattern for pattern matching: {name: String => n}, {name:}
+HashPattern { ~blockOrHash "{" (HashPatternPair ("," HashPatternPair)* ","?)? "}" ~blockOrHash }
+HashPatternPair {
+  Identifier colonOp expression ~hashOrPattern ("=>" Identifier)? |
+  Identifier colonOp
+}
 
 // Pin operator — scoped to InClause only, since ^ is bitwise XOR elsewhere
 PinExpression { "^" expression }
@@ -413,7 +420,7 @@ InterpolationEnd[openedBy=InterpolationStart] { "}" }
 
 Array { "[" commaSep<expression> "]" }
 Hash { ~blockOrHash "{" (HashPair ("," HashPair)* ","?)? "}" ~blockOrHash }
-HashPair { expression "=>" expression | Identifier colonOp expression }
+HashPair { expression "=>" expression | Identifier colonOp expression ~hashOrPattern }
 
 @precedence {
   member @left,
