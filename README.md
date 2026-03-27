@@ -31,13 +31,13 @@ Tested against popular open source Ruby projects (large, representative files):
 
 | Project | File | Lines | Accuracy |
 |---------|------|-------|----------|
-| [Faker](https://github.com/faker-ruby/faker) | internet.rb | 579 | **98.6%** |
-| [Devise](https://github.com/heartcombo/devise) | devise.rb | 534 | **98.1%** |
+| [Faker](https://github.com/faker-ruby/faker) | internet.rb | 579 | **98.4%** |
+| [Devise](https://github.com/heartcombo/devise) | devise.rb | 534 | **98.3%** |
 | [Jekyll](https://github.com/jekyll/jekyll) | site.rb | 577 | **97.6%** |
-| [Fastlane](https://github.com/fastlane/fastlane) | runner.rb | 379 | **95.0%** |
-| [Rails](https://github.com/rails/rails) | query_methods.rb | 2291 | **94.3%** |
-| [Grape](https://github.com/ruby-grape/grape) | api.rb | 166 | **94.0%** |
-| [Sidekiq](https://github.com/sidekiq/sidekiq) | config.rb | 321 | **93.5%** |
+| [Fastlane](https://github.com/fastlane/fastlane) | runner.rb | 379 | **96.3%** |
+| [Rails](https://github.com/rails/rails) | query_methods.rb | 2291 | **96.0%** |
+| [Grape](https://github.com/ruby-grape/grape) | api.rb | 166 | **95.8%** |
+| [Sidekiq](https://github.com/sidekiq/sidekiq) | config.rb | 321 | **95.6%** |
 
 ## What's supported
 
